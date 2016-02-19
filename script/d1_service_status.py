@@ -6,20 +6,12 @@ It needs to be privileged to determine service statuses.
 
 TODO: Replace most of this with psutil
   https://pythonhosted.org/psutil/
-  
-Installing on Ubuntu 12, need to use pip as the distribution is very old. For
-Ubuntu 14 and later, use apt
 
-On ubuntu 12::
+Run as 
 
-  sudo easy_install pip==1.4.1
-  sudo pip install -U psutil
-  
-On ubuntu 14::
+  d1_service_status.py -  
 
-  sudo apt-get install python-psutil
-
-e.g. /etc/cron.d/d1
+to get outout on stdout.
 '''
 import sys
 import os
