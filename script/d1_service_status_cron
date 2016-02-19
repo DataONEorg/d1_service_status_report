@@ -1,0 +1,4 @@
+# Generate some status info for admins
+# Generates JSON file /var/www/d1_service_status.json
+#
+* * * * * root /usr/local/bin/d1_service_status
