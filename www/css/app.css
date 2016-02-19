@@ -1,0 +1,67 @@
+
+
+td {
+  padding: 4px 5px;
+}
+
+td.data {
+  font-family: "Cousine", "Courier";
+  font-size: 90%;
+}
+
+span.data {
+  text-align: right;
+  width:40px;
+  display: inline-block;
+}
+
+.info {
+	margin-bottom: 0rem;
+}
+
+.is_primary {
+	/*background-color:  #e6fff2;*/
+	background-color: #f8faff;
+	/*border: 1px dotted gray;*/
+}
+
+.status_ok {
+  background-color: #e6ffe6;	
+}
+
+.status_warn {
+	background-color: #fff2e6;
+}
+
+.status_error {
+	background-color: #ffe6e6;
+}
+
+
+span.ip_address {
+	font-family: "Cousine", "Courier";
+}
+
+.logger {
+	font-family: "Cousine", "Courier";
+	font-size: 90%;
+  height: auto;
+  max-height: 200px;
+  overflow: auto;
+  background-color: #eeeeee;
+  word-break: normal !important;
+  word-wrap: normal !important;
+  white-space: pre !important;
+}
+
+
+/* For rendering a purl entry */
+.purl {
+  font-family: "Cousine", "Courier";
+  font-size: 100%;
+  background: white;
+  padding: none;
+  margin: none;
+  border: none;
+}
+

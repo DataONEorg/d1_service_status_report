@@ -1,0 +1,745 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>DataONE Services Status</title>
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans:400,300,600" rel="stylesheet" type="text/css">
+  <link href="https://fonts.googleapis.com/css?family=Cousine:400,300,600" rel="stylesheet" type="text/css">
+  <link rel="stylesheet" href="css/normalize.css">
+  <link rel="stylesheet" href="css/skeleton.css">  
+  <link rel="stylesheet" href="css/app.css">  
+  <link rel="icon" type="image/png" href="images/favicon.ico">
+<script type="text/javascript" 
+   src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js" ></script>   
+<script type="text/javascript">
+
+
+  //State of data retrieval
+  var STATE_NOTLOADED = 0;
+  var STATE_LOADING = 1;
+  var STATE_OK = 2;
+  var STATE_ERROR = 3;
+  
+  //Status codes for service checks
+  var STATUS_OK = 0;
+  var STATUS_WARN = 1;
+  var STATUS_ERROR = 2;
+
+  var services = [ {
+    id : 'd1-processing',
+    name : 'D1-Processing',
+    cpu_warn: 20
+  }, {
+    id : 'd1-index-task-generator',
+    name : 'Index-Task-Generator',
+    cpu_warn: 20
+  }, {
+    id : 'd1-index-task-processor',
+    name : 'Index-Task-Processor',
+    cpu_warn: 20
+  }, {
+    id : 'tomcat7',
+    name : 'Tomcat',
+    cpu_warn: 35    
+  }, {
+    id : 'zookeeper',
+    name : 'Zookeeper',
+    cpu_warn: 10
+  }, {
+    id : 'SLAPD',
+    name : 'SLAPD',
+    cpu_warn: 10
+  }, {
+    id : 'postgresql',
+    name : 'Postgresql',
+    cpu_warn: 10
+  } ];
+
+  var processing = [ {
+    id : 'Replication.active',
+    name : 'Replication',
+    title : 'Value of replication.properties'
+  }, {
+    id : 'Synchronization.active',
+    name : 'Synchronization',
+    title : 'Value of synchronization.properties'
+  }, {
+    id : 'LogAggregator.active',
+    name : 'Aggregation',
+    title : 'Value of logAggregation.properties'
+  } ];
+
+  var environments = {
+    'production' : {
+      'name' : 'Production',
+      'primary' : 'cn.dataone.org',
+      'primary_ip': '',
+      'log': [],
+      'rendered': false,
+      'cns' : {
+        'cn-ucsb-1.dataone.org' : {
+          'state' : STATE_NOTLOADED,
+          'stats' : {}
+        },
+        'cn-unm-1.dataone.org' : {
+          'state' : STATE_NOTLOADED,
+          'stats' : {}
+        },
+        'cn-orc-1.dataone.org' : {
+          'state' : STATE_NOTLOADED,
+          'stats' : {}
+        }
+      }
+    },
+    'stage' : {
+      'name' : 'Stage',
+      'primary' : 'cn-stage.test.dataone.org',
+      'primary_ip': '',
+      'log': [],
+      'rendered': false,
+      'cns' : {
+        'cn-stage-ucsb-1.test.dataone.org' : {
+          'state' : STATE_NOTLOADED,
+          'stats' : {}
+        },
+        'cn-stage-orc-1.test.dataone.org' : {
+          'state' : STATE_NOTLOADED,
+          'stats' : {}
+        },
+        'cn-stage-unm-1.test.dataone.org' : {
+          'state' : STATE_NOTLOADED,
+          'stats' : {}
+        }
+      }
+    },
+    'stage-2' : {
+      'name' : 'Stage-2',
+      'primary' : 'cn-stage-2.test.dataone.org',
+      'primary_ip': '',
+      'log': [],
+      'rendered': false,
+      'cns' : {
+        'cn-stage-unm-2.test.dataone.org' : {
+          'state' : STATE_NOTLOADED,
+          'stats' : {}
+        }
+      }
+    },
+    'sandbox' : {
+      'name' : 'Sandbox',
+      'primary' : 'cn-sandbox.test.dataone.org',
+      'primary_ip': '',
+      'log': [],
+      'rendered': false,
+      'cns' : {
+        'cn-sandbox-ucsb-1.test.dataone.org' : {
+          'state' : STATE_NOTLOADED,
+          'stats' : {}
+        },
+        'cn-sandbox-orc-1.test.dataone.org' : {
+          'state' : STATE_NOTLOADED,
+          'stats' : {}
+        },
+        'cn-sandbox-unm-1.test.dataone.org' : {
+          'state' : STATE_NOTLOADED,
+          'stats' : {}
+        }
+      }
+    },
+    'sandbox-2' : {
+      'name' : 'Sandbox-2',
+      'primary' : 'cn-sandbox-2.test.dataone.org',
+      'primary_ip': '',
+      'log': [],
+      'rendered': false,
+      'cns' : {
+        'cn-sandbox-ucsb-2.test.dataone.org' : {
+          'state' : STATE_NOTLOADED,
+          'stats' : {}
+        }
+      }
+    },
+    'dev' : {
+      'name' : 'Dev',
+      'primary' : 'cn-dev.test.dataone.org',
+      'primary_ip': '',
+      'log': [],
+      'rendered': false,
+      'cns' : {
+        'cn-dev-ucsb-1.test.dataone.org' : {
+          'state' : STATE_NOTLOADED,
+          'stats' : {}
+        },
+        'cn-dev-orc-1.test.dataone.org' : {
+          'state' : STATE_NOTLOADED,
+          'stats' : {}
+        },
+        'cn-dev-unm-1.test.dataone.org' : {
+          'state' : STATE_NOTLOADED,
+          'stats' : {}
+        }
+      }
+    },
+    'dev-2' : {
+      'name' : 'Dev-2',
+      'primary' : 'cn-dev-2.test.dataone.org',
+      'primary_ip': '',
+      'log': [],
+      'rendered': false,
+      'cns' : {
+        'cn-dev-ucsb-2.test.dataone.org' : {
+          'state' : STATE_NOTLOADED,
+          'stats' : {}
+        },
+        'cn-dev-unm-2.test.dataone.org' : {
+          'state' : STATE_NOTLOADED,
+          'stats' : {}
+        }
+      }
+    }
+  }
+
+  var MAX_LOG_ENTRIES = 25;  //Max number of rows in each environment log
+  var MAX_HISTORY = 10;  //Keep status of services around for a bit
+  var service_history = {}; 
+  
+  /**
+   * Peform a Network Service Lookup, using StatDNS API.
+   *
+   * @param  nid    identifier of element that will be updated with answer
+   * @param   dn    A well-formed domain name to resolve.
+   */
+  function NSLookup(environment, dn) {
+    var url = "https://examples.dataone.org/rrda/8.8.8.8:53/%FQDN%/a".replace(
+        "%FQDN%", dn);
+    var theResult = "";
+    $.ajax({
+      dataType : "json",
+      url : url,
+      async : true,
+      success : function(response) {
+        //console.log("nid = " + nid);
+        //console.log(response)
+        for (var i = 0; i < response.answer.length; i++) {
+          if (response.answer[i]['type'] == 'A') {
+            environments[environment]['primary_ip'] = response.answer[i]['rdata'];
+            renderEnvironmentStatus(environment);
+            break;
+          }
+        }
+      },
+    });
+  }
+
+  function generateStatusView(target) {
+    //Creates the DOM structure that will be used to hold results as they are 
+    //pulled in from the servers.
+    var t = $("#" + target);
+    for ( var env in environments) {
+      var od = $("<div />", {
+        id : env
+      });
+      var head = $("<h3>").html(environments[env]['name']);
+      od.append(head);
+      var p = $("<p>",{text:'Primary IP: ', class:'info'});
+      p.append($("<span>",{id:env+"~primary_ip", class:'ip_address'}));
+      od.append(p);
+      var cns = environments[env]['cns'];
+      var tb = $("<table>");
+      var cgroup = $("<colgroup>");
+      var tr = $("<tr>");
+      tr.append($("<th>", {
+        text : 'Node'
+      }))
+      cgroup.append($("<col>",{id: env + "~col~labels"}));
+      for ( var cn in environments[env]['cns']) {
+        var name = cn.split('.')[0];
+        tr.append($("<th>").html(name));
+        cgroup.append($("<col>", {id: env + '~col~' + cn}));
+      }
+      tb.append(cgroup);
+      tb.append(tr);
+      tr = $("<tr>");
+      tr.append($("<td>", {
+        text : "IP Address"
+      }));
+      for ( var cn in environments[env]['cns']) {
+        var id = env + "~" + cn + "~ipaddr";
+        tr.append($("<td>", {
+          id : id,
+          text : '.',
+          class : 'data'
+        }));
+      }
+      tb.append(tr);
+      tr = $("<tr>");
+      tr.append($("<td>", {
+        text : "Time",
+        title : 'System time on node.'
+      }));
+      for ( var cn in environments[env]['cns']) {
+        var id = env + "~" + cn + "~timestamp";
+        tr.append($("<td>", {
+          id : id,
+          text : '.',
+          class : 'data'
+        }));
+      }
+      tb.append(tr);
+      for ( var idx in processing) {
+        tr = $("<tr>");
+        tr.append($("<td>", {
+          text : processing[idx]['name'],
+          title : processing[idx]['title']
+        }));
+        for ( var cn in environments[env]['cns']) {
+          var id = env + "~" + cn + "~" + processing[idx]['id'];
+          tr.append($("<td>", {
+            id : id,
+            text : '.',
+            class : 'data'
+          }));
+        }
+        tb.append(tr);
+      }
+
+      for ( var svc in services) {
+        tr = $("<tr>");
+        tr.append($("<td>", {
+          text : services[svc]['name']
+        }))
+        for ( var cn in environments[env]['cns']) {
+          var v = ".";
+          var id = env + "~" + cn + "~" + services[svc]['id'];
+          service_history[id] = {'cpu':[], 'mem':[]};
+          var td = $("<td>", {
+            id : id,
+            class : 'data'
+          });
+          td.append($("<span>", {id: id+"~etime", text: '.'}));
+          td.append($("<span>", {id: id+"~cpu", text: '', class:'data'}));
+          td.append($("<span>", {id: id+"~mem", text: '', class:'data'}));
+          tr.append(td);
+        }
+        tb.append(tr);
+      }
+      od.append(tb);
+      // Create a log report place
+      var id = env + '~log';
+      var logger = $("<div>").append( $("<pre>", {id:id, class:'logger', text:''}));
+      od.append(logger);
+      t.append(od);
+    }
+  }
+  
+  
+  function renderLog(env) {
+    var id = env + '~log';
+    $('[id="' + id + '"]').text(environments[env]['log'].join("\n"));
+  }
+  
+  
+  function eLog(env, message, status) {
+    var ts = new Date();
+    var entry = ts.toISOString().split(".")[0];
+    switch (status) {
+	    case STATUS_OK: 
+	      entry += " OK:";
+	      break;
+	    case STATUS_WARN: 
+	      entry += " WARN:";
+	      break;
+	    case STATUS_ERROR: 
+	      entry += " ERROR:";
+	      break;      
+    }
+    entry += " " + message;
+    environments[env]['log'].unshift(entry);
+    if (environments[env]['log'].length > MAX_LOG_ENTRIES) {
+      environments[env]['log'].pop();
+    }
+  }
+  
+  
+  function setIdStatus(id, status) {
+    // Set display class of element id according to status
+    if (status == STATUS_OK) {
+      $('[id="' + id + '"]').removeClass('status_error');
+      $('[id="' + id + '"]').removeClass('status_warn');
+      $('[id="' + id + '"]').addClass('status_ok');
+      return;
+    }
+    if (status == STATUS_ERROR) {
+      $('[id="' + id + '"]').removeClass('status_ok');
+      $('[id="' + id + '"]').removeClass('status_warn');
+      $('[id="' + id + '"]').addClass('status_error');
+      return;
+    }
+    if (status == STATUS_WARN) {
+      $('[id="' + id + '"]').removeClass('status_ok');
+      $('[id="' + id + '"]').removeClass('status_error');
+      $('[id="' + id + '"]').addClass('status_warn');
+      return;
+    }
+  }
+  
+  
+  function getServiceInfoById(service) {
+    for (var svc in services) {
+      if (services[svc]['id'] == service) {
+        return services[svc];
+      }
+    }
+  }
+  
+  
+  function isPrimaryCN(env, cn) {
+    //true if specified CN is the primary for environment
+    return (environments[env]['cns'][cn]['stats']['ip_address'] == environments[env]['primary_ip']);
+  }
+  
+  
+  function isProcessEnabled(env, process) {
+    // Return a dict of cn:bool
+    var res = {'n': 0};
+    var v = false;
+    for ( var cn in environments[env]['cns'] ) {
+      v = environments[env]['cns'][cn]['stats']['processing'][process];
+      res[cn] = v;
+      if ( v ) {
+        res['n'] += 1;
+      }
+    }
+    return res;
+  }
+  
+
+  function isServiceRunningCN(env, service, cn) {
+    return environments[env]['cns'][cn]['stats']['services'][service].length
+  }
+  
+  
+  function isServiceRunning(env, service) {
+    // Return a dict of cn:bool
+    var res = {'n': 0};
+    for ( var cn in environments[env]['cns'] ) {
+      res[cn] = false;
+      var ninstances = isServiceRunningCN(env, service, cn);
+      if (ninstances > 0) {
+        res[cn] = true;
+        res['n'] += 1;  
+      }
+    }
+    return res;
+  }
+  
+  
+  function checkService(env, service, cn) {
+    var id = env + "~" + cn + "~" + service;
+    var svc_info = getServiceInfoById(service);
+    if (isServiceRunningCN(env, service, cn) > 0) {
+      var load = parseFloat(environments[env]['cns'][cn]['stats']['services'][service][0][2]);
+      if (load >= svc_info['cpu_warn']) {
+        setIdStatus(id, STATUS_WARN);
+        eLog(env, svc_info['name'] + " CPU use seems high (" + environments[env]['cns'][cn]['stats']['services'][service][0][2] + ") on " + cn, STATUS_WARN);
+      } else {
+        setIdStatus(id, STATUS_OK);
+      }
+    } else {
+      setIdStatus(id, STATUS_ERROR);
+      eLog(env, svc_info['name'] + " is not running on " + cn, STATUS_ERROR);
+    }
+  }
+  
+  
+  function checkEnvironmentProcessing(env) {
+    // Check that processing is running on the primary CN and that
+    // sync and replication are enabled and running on only one CN.
+    var svc = 'd1-processing';
+    var svc_running = isServiceRunning(env, svc);
+    var sync_enabled = isProcessEnabled(env, 'Synchronization.active');
+    var repl_enabled = isProcessEnabled(env, 'Replication.active');
+    var id = '';
+    var cn = '';
+    for ( cn in environments[env]['cns']) {
+      id = env + "~" + cn + "~" + svc;
+      if ( svc_running[cn] ) { //Service running on the CN
+        if (sync_enabled[cn] && repl_enabled[cn]) { //With sync and replication enabled.
+          if (svc_running['n'] > 1) {
+            // It is an error to have processing running on more than one 
+            // CN where sync and repl are enabled.
+            setIdStatus(id, STATUS_ERROR);
+            eLog(env,'d1-processing is running on more that one CN with synchronization and replication enabled' ,STATUS_ERROR);
+          } else {
+            setIdStatus(id, STATUS_OK);
+            id = env + "~" + cn + "~" + 'Synchronization.active';
+            setIdStatus(id, STATUS_OK);
+            id = env + "~" + cn + "~" + 'Replication.active';
+            setIdStatus(id, STATUS_OK);
+          }
+        } else if (sync_enabled[cn] || repl_enabled[cn]) {
+          setIdStatus(id, STATUS_WARN);
+          eLog(env,'d1-processing is running but both synchronization and aggregation are not enabled' ,STATUS_WARN);
+        }
+      } else //Service not running on CN: 
+        if (( svc_running['n'] == 0) && ( (sync_enabled[cn] || repl_enabled[cn]) )) {
+          if ( isPrimaryCN(env, cn) ) {
+            setIdStatus(id, STATUS_ERROR);
+            eLog(env,'d1-processing is not running on the primary CN' ,STATUS_ERROR);
+          } else {
+            setIdStatus(id, STATUS_WARN);
+            eLog(env,'d1-processing is not running in this environment' ,STATUS_WARN);
+          }
+        } else if (svc_running['n'] == 1) {
+          //Service not running on CN, but only one instance runing elsewhere
+          setIdStatus(id, STATUS_OK);
+        }
+    }
+  }
+  
+
+  function checkLogAggregation(env) {
+    //Must be running on one CN where agg is enabled and processing turned on.
+    var id = '';
+    var cn = '';
+    var svc_running = isServiceRunning(env, 'd1-processing');
+    var aggr_enabled = isProcessEnabled(env, 'LogAggregator.active');
+    var both_running = {'n': 0};
+    for (cn in environments[env]['cns']) {
+      both_running[cn] = false;
+      if ((svc_running[cn]) && (aggr_enabled[cn])) {
+        both_running['n'] += 1;
+        both_running[cn] = true;
+      }
+    }
+    var err1_logged = false;
+    var err2_logged = false;
+    for ( cn in environments[env]['cns'] ) {
+      id = env + "~" + cn + "~" + 'LogAggregator.active';
+      if (aggr_enabled[cn]) {
+        if (svc_running['n'] == 0) {
+          setIdStatus(id, STATUS_ERROR);
+          if (!err1_logged) {
+            eLog(env,'Log aggregation is not running in this environment.' ,STATUS_ERROR);
+            err1_logged = true;
+          }        
+        } else if (svc_running[cn]) {
+          if (both_running['n'] > 1) {
+            setIdStatus(id, STATUS_ERROR);
+            if (!err2_logged) {
+              eLog(env,'Log aggregation is running on more than one CN in this environment' ,STATUS_ERROR);
+              err2_logged = true;
+            }
+          } else {
+            setIdStatus(id, STATUS_OK);
+          }
+        } 
+      } 
+    }    
+  }
+  
+  
+  function checkIndexing(env) {
+    //Index generator and processor should be running on one CN
+    //Does not matter if it is not the primary CN (Zookeeper keeps things
+    //in sync across the CNs)
+    var gen_running = isServiceRunning(env, 'd1-index-task-generator');
+    var proc_running = isServiceRunning(env, 'd1-index-task-processor');
+    var id = '';
+    var cn = '';
+    var err_logged = false;
+    for ( cn in environments[env]['cns']) {
+      if ((gen_running['n'] == 1) && (proc_running['n'] == 1)) {
+        id = env + "~" + cn + "~" + 'd1-index-task-generator';
+        setIdStatus(id, STATUS_OK);
+        id = env + "~" + cn + "~" + 'd1-index-task-processor';
+        setIdStatus(id, STATUS_OK);
+      } else {
+        id = env + "~" + cn + "~" + 'd1-index-task-generator';
+        setIdStatus(id, STATUS_ERROR);
+        id = env + "~" + cn + "~" + 'd1-index-task-processor';
+        setIdStatus(id, STATUS_ERROR);
+        if (!err_logged) {
+          eLog(env,'d1-index-task-generator and d1-index-task-processor are not running' ,STATUS_ERROR);
+          err_logged = true;
+        }
+      }
+    }    
+  }
+
+  
+  
+  function renderEnvironmentStatus(env) {
+    //Renders the status data for the environment and computes if the
+    //services running across the environment are as expected.
+    
+    //Check that status data for the environment is complete
+    for ( var cn in environments[env]['cns']) {
+      if (environments[env]['cns'][cn]['state'] < STATE_OK) {
+        return;
+      }
+    }
+    if (environments[env]['primary_ip'] == '') {
+      return;
+    }
+    if (environments[env]['rendered']) {
+      return;
+    }
+    eLog(env, "----", -1);
+    //Output the status data to the view
+    for ( var cn in environments[env]['cns']) {
+      var v = "-";
+      var id = env + "~" + cn + "~ipaddr";
+      try {
+        v = environments[env]['cns'][cn]['stats']['ip_address'];
+        $('[id="' + id + '"]').html(v);
+      } catch (err) {
+        console.log("Error getting stuff for " + cn);
+      }
+    }
+    for ( var cn in environments[env]['cns']) {
+      var v = "-";
+      var id = env + "~" + cn + "~timestamp";
+      try {
+        v = environments[env]['cns'][cn]['stats']['time_stamp'].split('.')[0];
+        $('[id="' + id + '"]').html(v);
+      } catch (err) {
+        console.log("Error getting stuff for " + cn);
+      }
+    }
+    for ( var idx in processing) {
+      for ( var cn in environments[env]['cns']) {
+        var id = env + "~" + cn + "~" + processing[idx]['id'];
+        var v = "N/A";
+        try {
+          v = environments[env]['cns'][cn]['stats']['processing'][processing[idx]['id']];
+          if (v == true) {
+            v = "Enabled";
+          } else {
+            v = "Disabled";
+          }
+          $('[id="' + id + '"]').html(v);
+        } catch (err) {
+          console.log("Error getting stuff for " + cn);
+        }
+      }
+    }
+
+    for ( var svc in services) {
+      for ( var cn in environments[env]['cns']) {
+        var v = "off";
+        var title = "Service not running.";
+        var id = env + "~" + cn + "~" + services[svc]['id'];
+        var data = environments[env]['cns'][cn]['stats']['services'][services[svc]['id']];
+        if (data.length > 0) {
+          service_history[id]['cpu'].push(data[0][2]);
+          if (service_history[id]['cpu'].length > MAX_HISTORY) {
+            service_history[id]['cpu'].shift();
+          }
+          service_history[id]['mem'].push(data[0][3]);
+          if (service_history[id]['mem'].length > MAX_HISTORY) {
+            service_history[id]['mem'].shift();
+          }
+          $('[id="' + id + '~etime"]').text(data[0][1]).prop('title', 'Elapsed time');
+          $('[id="' + id + '~cpu"]').text(data[0][2]).prop('title', '%CPU');
+          $('[id="' + id + '~mem"]').text(data[0][3]).prop('title', '%MEM');
+        } else {
+          $('[id="' + id + '~etime"]').text("Off").prop('title', 'Service not running');
+        }
+      }
+    }
+    // Now compute if the service states are OK or if something unexepected is
+    // going on
+    if (environments[env]['primary_ip'] != '') {
+      var id = env+"~primary_ip";
+      $('[id="' + id + '"]').text(environments[env]['primary_ip']);
+      for ( var cn in environments[env]['cns']) {
+        var id = env + '~col~' + cn;
+        var is_primary = false;
+        if (environments[env]['cns'][cn]['stats']['ip_address'] == environments[env]['primary_ip']) {
+          $('[id="' + id + '"]').addClass('is_primary');
+          is_primary = true;
+        } else {
+          $('[id="' + id + '"]').removeClass('is_primary');          
+        }
+        checkService(env, 'postgresql', cn);
+	      checkService(env, 'SLAPD', cn);
+	      checkService(env, 'tomcat7', cn);
+	      checkService(env, 'zookeeper', cn);
+      }
+      checkEnvironmentProcessing(env);
+      checkLogAggregation(env);
+      checkIndexing(env);
+    }
+    
+    renderLog(env);
+    environments[env]['rendered'] = true;
+  }
+
+  function getCNStatusJSON(environment, cn) {
+    //Load the service status for the cn
+    //TODO: Errors a mininmally handled - need to add logs for each environment
+    // and write out problems.
+    var res = {};
+    $.ajax({
+      dataType : "json",
+      url: "/status/__ajaxproxy/https://" + cn + "/d1_service_status.json",
+      //url : "https://" + cn + "/d1_service_status.json",
+      async : true,
+      success : function(response) {
+        response['error'] = "";
+        environments[environment]['cns'][cn]['stats'] = response;
+        environments[environment]['cns'][cn]['state'] = STATE_OK;
+        renderEnvironmentStatus(environment);
+      },
+      error : function(jqXHR, textStatus, errorThrown) {
+        console.log("Unable to retrieve status for " + this.cn + "("
+            + jqXHR.status + ")");
+        environments[environment]['cns'][this.cn]['state'] = STATE_ERROR;
+        environments[environment]['cns'][this.cn]['stats'] = {};
+        eLog(environment,'Failed to retrieve status update from '+ cn, STATUS_ERROR);
+        renderEnvironmentStatus(environment);
+      }
+    });
+  }
+
+  function loadEnvironmentStatus(environment) {
+    //Load status JSON from each CN of the environment and compute the
+    //environment state.
+    var cns = environments[environment];
+    NSLookup(environment, environments[environment]['primary']);
+    environments[environment]['rendered'] = false;
+    for ( var cn in cns['cns']) {
+      cns['cns'][cn]['state'] = STATE_LOADING;
+      getCNStatusJSON(environment, cn);
+    }
+  }
+
+  function reloadAllEnvironmentStatus() {
+    //Refresh all the environments but pulling in the JSON status data
+    //and recalculating the status
+    for ( var k in environments) {
+      loadEnvironmentStatus(k);
+    }
+    setTimeout(reloadAllEnvironmentStatus, 60 * 1000);
+  }
+
+  
+  jQuery(document).ready(function($) {
+    generateStatusView("reports");
+    reloadAllEnvironmentStatus();
+    $("#refresh").click(reloadAllEnvironmentStatus);
+  });
+</script>   
+</head>
+<body>
+  <div class="container">
+    <div class="row">
+      <div class="12 columns" style="margin-top: 0%">
+        <div id="reports"></div>
+        <div><p id="refresh">Refresh</p></div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
