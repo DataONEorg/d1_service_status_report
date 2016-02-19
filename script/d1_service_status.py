@@ -52,7 +52,7 @@ def getProcesses():
 
 
 def getServicePids(processes, match):
-  '''
+  '''Get the matching services from the list of all processes
   '''
   pids = []
   for service in processes:
@@ -82,6 +82,9 @@ def getProcessingEnablement():
   
 
 def getCNStatus():
+  '''Main method for gathering stats.
+  '''
+  # List of services to examine, key is used for output status, value is the string to match on
   services = {
     'SLAPD':'slapd',
     'tomcat7':"tomcat-.*.jar",
@@ -91,6 +94,7 @@ def getCNStatus():
     'd1-index-task-processor':"d1-index-task-processor",
     'postgresql':'postgres: metacat metacat',
     }
+  # Results are added to this structure, which is finally output as JSON
   res = {'time_stamp': datetime.datetime.utcnow().isoformat(),
          'fqdn': getFQDN(),
           }
