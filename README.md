@@ -53,7 +53,7 @@ To install the web page:
 
 ```
 mkdir /var/www/status
-# copy d1_service_status.html and the css folder into status
+# copy d1_service_status.html, css, and images into /var/www/status
 ln -s /var/www/status/d1_service_status.html /var/www/status/index.html
 ```
 
@@ -65,3 +65,38 @@ RewriteCond %{THE_REQUEST} "/status/__ajaxproxy/https://cn(.*)dataone.org(.*)"
 RewriteRule "^/status/__ajaxproxy/(.*)$" "$1" [P,L,NE]
 ```
 
+## Operation
+
+
+```
+               +--------------------------+
+               |                          |
+               |  d1_service_status.html  |
+               |                          |
+               +------------^-------------+
+                            |
+                            //
+                            |
+                +-----------+------------+
+                |                        |
+                | d1_service_status.json |
+                |                        |
+                +-----------^------------+
+                            |
+                            |
+                 +----------+------------+
+                 |                       |
+            +----> d1_service_status.py  <--------+
+            |    |                       |        |
+            |    +-----------------------+        |
+            |                                     |
+            |                                     |
++-----------+-----------+     +-------------------+----------------+
+|                       |     |                                    |
+|  Processing Config    |     |           Process List             |
+|                       |     |                                    |
+| /etc/dataone/process  |     |  ps ax -o pid,etime,pcpu,pmem,args |
+|                       |     |                                    |
++-----------------------+     +------------------------------------+
+
+```
