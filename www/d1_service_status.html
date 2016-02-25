@@ -24,6 +24,10 @@
   var STATUS_OK = 0;
   var STATUS_WARN = 1;
   var STATUS_ERROR = 2;
+  
+  // Allow up to five minutes difference in time stamps of content revied to
+  // that of the client.
+  var MAX_TIME_DELTA=1000*60*5; 
 
   var services = [ {
     id : 'd1-processing',
@@ -577,6 +581,32 @@
   }
 
   
+  function checkReportingTime(env) {
+    for ( var cn in environments[env]['cns']) {
+      var t0 = Date.parse(environments[env]['cns'][cn]['stats']['time_stamp']);
+      var t1 = environments[env]['cns'][cn]['ts_retrieved'];
+      var delta = Math.abs(t1-t0);
+      var id = env + "~" + cn + "~timestamp";
+      if ( delta > MAX_TIME_DELTA ) {
+        delta = delta / (1000 * 60.0);
+        var msg = '';
+        if (delta > 120) {
+          delta = delta / 60;
+          msg = Math.round(delta) + " hours";
+          if (delta > 48) {
+            msg = Math.round(delta/24) + " days";
+          }
+        } else {
+          msg = Math.round(delta) + " minutes";
+        }
+        setIdStatus(id, STATUS_OK);
+        eLog(env, "No report from CN for " + msg);
+      } else {
+        setIdStatus(id, STATUS_OK);
+      }
+    }
+  }
+  
   
   function renderEnvironmentStatus(env) {
     //Renders the status data for the environment and computes if the
@@ -662,6 +692,7 @@
     if (environments[env]['primary_ip'] != '') {
       var id = env+"~primary_ip";
       $('[id="' + id + '"]').text(environments[env]['primary_ip']);
+      checkReportingTime(env);
       for ( var cn in environments[env]['cns']) {
         var id = env + '~col~' + cn;
         var is_primary = false;
@@ -699,13 +730,15 @@
         response['error'] = "";
         environments[environment]['cns'][cn]['stats'] = response;
         environments[environment]['cns'][cn]['state'] = STATE_OK;
+        environments[environment]['cns'][cn]['ts_retrieved'] = new Date();
         renderEnvironmentStatus(environment);
       },
       error : function(jqXHR, textStatus, errorThrown) {
         console.log("Unable to retrieve status for " + this.cn + "("
             + jqXHR.status + ")");
-        environments[environment]['cns'][this.cn]['state'] = STATE_ERROR;
         environments[environment]['cns'][this.cn]['stats'] = {};
+        environments[environment]['cns'][this.cn]['state'] = STATE_ERROR;
+        environments[environment]['cns'][cn]['ts_retrieved'] = new Date();
         eLog(environment,'Failed to retrieve status update from '+ cn, STATUS_ERROR);
         renderEnvironmentStatus(environment);
       }
