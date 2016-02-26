@@ -13,7 +13,6 @@
    src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js" ></script>   
 <script type="text/javascript">
 
-
   //State of data retrieval
   var STATE_NOTLOADED = 0;
   var STATE_LOADING = 1;
@@ -73,6 +72,26 @@
     title : 'Value of logAggregation.properties'
   } ];
 
+  
+  var certificates = [ {
+    id : 'certificate.wildcard',
+    name: 'wildcard',
+    title: '*.Server'
+  },{
+    id : 'certificate.client',
+    name: 'client',
+    title: 'Client'
+  },{
+    id : 'certificate.fqdn',
+    name: 'server_fqdn',
+    title: 'Server.FQDN'
+  },{
+    id : 'certificate.postgres',
+    name: 'postgres',
+    title: 'Postgres'
+  }]
+  
+  
   //TODO: load the CNs from the node list at each environment.
   var environments = {
     'production' : {
@@ -326,6 +345,22 @@
         }
         tb.append(tr);
       }
+      for (var idx in certificates) {
+        tr = $("<tr>");
+        tr.append($("<td>", {
+          text : certificates[idx]['title']
+        }));
+        for ( var cn in environments[env]['cns']) {
+          var id = env + "~" + cn + "~" + certificates[idx]['id'];
+          tr.append($("<td>", {
+            id : id,
+            text : '.',
+            class : 'data'
+          }));
+        }
+        tb.append(tr)        
+      }
+      
       od.append(tb);
       // Create a log report place
       var id = env + '~log';
@@ -599,12 +634,34 @@
         } else {
           msg = Math.round(delta) + " minutes";
         }
-        setIdStatus(id, STATUS_OK);
+        setIdStatus(id, STATUS_ERROR);
         eLog(env, "No report from CN for " + msg);
       } else {
         setIdStatus(id, STATUS_OK);
       }
     }
+  }
+  
+  
+  function checkCertificates(env) {
+    for ( var idx in certificates) {
+      for ( var cn in environments[env]['cns']) {
+        var id = env + "~" + cn + "~" + certificates[idx]['id'];
+        var v = "";
+        try {
+          v = environments[env]['cns'][cn]['stats']['certificates'][certificates[idx]['name']];
+          if (v['expired'] > 0) {
+            setIdStatus(id, STATUS_ERROR);
+            eLog(env, "Certificate " + v['file'] + " on " + cn + " expired.");            
+          } else {
+            setIdStatus(id, STATUS_OK);
+          }
+        } catch (err) {
+          console.log("Error getting cert for " + cn);
+        }
+      }
+    }
+    
   }
   
   
@@ -687,6 +744,21 @@
         }
       }
     }
+
+    for ( var idx in certificates) {
+      for ( var cn in environments[env]['cns']) {
+        var id = env + "~" + cn + "~" + certificates[idx]['id'];
+        var v = "";
+        try {
+          v = environments[env]['cns'][cn]['stats']['certificates'][certificates[idx]['name']];
+          $('[id="' + id + '"]').text(v['not_after']).prop('title', v['file']);;
+        } catch (err) {
+          console.log("Error getting cert for " + cn);
+        }
+      }
+    }
+    
+    
     // Now compute if the service states are OK or if something unexepected is
     // going on
     if (environments[env]['primary_ip'] != '') {
@@ -710,6 +782,7 @@
       checkEnvironmentProcessing(env);
       checkLogAggregation(env);
       checkIndexing(env);
+      checkCertificates(env);
     }
     
     renderLog(env);

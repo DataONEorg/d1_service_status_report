@@ -20,6 +20,46 @@ import re
 import datetime
 import json
 import commands
+from OpenSSL import crypto
+
+
+def loadNodeProperties(prop_file='/etc/dataone/node.properties'):
+  '''load node properties into a dictionary
+  '''
+  result = {}
+  with open(prop_file, 'r') as pf:
+    for entry in pf.readlines():
+      entry = entry.strip()
+      if not entry.startswith('#'):
+        # Valid property?
+        try:
+          k,v = entry.split("=", 1)
+          result[k.strip()] = v.strip()
+        except:
+          pass
+  return result
+
+
+def checkCertificate(cert_file):
+  res = {'file':cert_file}
+  with file(cert_file, "rb") as cfile:
+    x509 = crypto.load_certificate(crypto.FILETYPE_PEM, cfile.read())
+  res['expired'] = x509.has_expired()
+  res['not_before'] = x509.get_notBefore()
+  res['not_after'] = x509.get_notAfter()
+  return res
+
+
+def checkCertificates(props):
+  res = {}
+  res['wildcard'] = checkCertificate(props['cn.server.publiccert.filename'])
+  server_cert = os.path.join('/etc/dataone/client/certs', props['cn.hostname']+".pem")
+  res['server_fqdn'] = checkCertificate(server_cert)
+  client_cert = os.path.join(props['D1Client.certificate.directory'], props['D1Client.certificate.filename'])
+  res['client'] = checkCertificate(client_cert)
+  res['postgres'] = checkCertificate('/var/lib/postgresql/9.1/main/server.crt')
+  return res
+
 
 def getFQDN():
   res = commands.getstatusoutput("hostname -f")
@@ -94,6 +134,10 @@ def getCNStatus():
     'd1-index-task-processor':"d1-index-task-processor",
     'postgresql':'postgres: metacat metacat',
     }
+  
+  #Load the node properties
+  properties = loadNodeProperties()
+  
   # Results are added to this structure, which is finally output as JSON
   res = {'time_stamp': datetime.datetime.utcnow().isoformat(),
          'fqdn': getFQDN(),
@@ -104,7 +148,8 @@ def getCNStatus():
   processes = getProcesses()
   for name in services.keys():
     res['services'][name] = getServicePids(processes, services[name])
-  res['processing'] = getProcessingEnablement() 
+  res['processing'] = getProcessingEnablement()
+  res['certificates'] = checkCertificates(properties) 
   return res
 
 
