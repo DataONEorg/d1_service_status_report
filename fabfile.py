@@ -22,7 +22,7 @@ HOSTS="cn-dev-ucsb-2.test.dataone.org,cn-dev-unm-2.test.dataone.org"
 fab -I -H ${HOSTS} updateDeployedScript
 HOSTS="cn-sandbox-ucsb-1.test.dataone.org,cn-sandbox-unm-1.test.dataone.org,cn-sandbox-orc-1.test.dataone.org"
 fab -I -H ${HOSTS} updateDeployedScript
-HOSTS="cn-sandbox-ucsb-1.test.dataone.org"
+HOSTS="cn-sandbox-ucsb-2.test.dataone.org"
 fab -I -H ${HOSTS} updateDeployedScript
 HOSTS="cn-stage-ucsb-1.test.dataone.org,cn-stage-unm-1.test.dataone.org,cn-stage-orc-1.test.dataone.org"
 fab -I -H ${HOSTS} updateDeployedScript
@@ -30,6 +30,15 @@ HOSTS="cn-stage-unm-2.test.dataone.org"
 fab -I -H ${HOSTS} updateDeployedScript
 HOSTS="cn-ucsb-1.dataone.org,cn-unm-1.dataone.org,cn-orc-1.dataone.org"
 fab -I -H ${HOSTS} updateDeployedScript
+
+HOSTS="cn-dev-ucsb-1.test.dataone.org,cn-dev-unm-1.test.dataone.org,cn-dev-orc-1.test.dataone.org"
+HOSTS="${HOSTS},cn-dev-ucsb-2.test.dataone.org,cn-dev-unm-2.test.dataone.org"
+HOSTS="${HOSTS},cn-sandbox-ucsb-1.test.dataone.org,cn-sandbox-unm-1.test.dataone.org,cn-sandbox-orc-1.test.dataone.org"
+HOSTS="${HOSTS},cn-sandbox-ucsb-2.test.dataone.org"
+HOSTS="${HOSTS},cn-stage-ucsb-1.test.dataone.org,cn-stage-unm-1.test.dataone.org,cn-stage-orc-1.test.dataone.org"
+HOSTS="${HOSTS},cn-stage-unm-2.test.dataone.org"
+HOSTS="${HOSTS},cn-ucsb-1.dataone.org,cn-unm-1.dataone.org,cn-orc-1.dataone.org"
+
 '''
 
 SCRIPT_FILE = "d1_service_status.py"
