@@ -11,6 +11,8 @@
   <link rel="icon" type="image/png" href="images/favicon.ico">
 <script type="text/javascript" 
    src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js" ></script>   
+<script type="text/javascript" src="js/jquery.sparkline.2.2.1.min.js" ></script>   
+
 <script type="text/javascript">
 
   //State of data retrieval
@@ -43,7 +45,7 @@
   }, {
     id : 'tomcat7',
     name : 'Tomcat',
-    cpu_warn: 35    
+    cpu_warn: 50    
   }, {
     id : 'zookeeper',
     name : 'Zookeeper',
@@ -76,19 +78,19 @@
   var certificates = [ {
     id : 'certificate.wildcard',
     name: 'wildcard',
-    title: '*.Server'
+    title: 'Server.* Cert.'
   },{
     id : 'certificate.client',
     name: 'client',
-    title: 'Client'
+    title: 'Client Cert.'
   },{
     id : 'certificate.fqdn',
     name: 'server_fqdn',
-    title: 'Server.FQDN'
+    title: 'FQDN Cert.'
   },{
     id : 'certificate.postgres',
     name: 'postgres',
-    title: 'Postgres'
+    title: 'Postgres Cert.'
   }]
   
   
@@ -224,7 +226,7 @@
   }
 
   var MAX_LOG_ENTRIES = 25;  //Max number of rows in each environment log
-  var MAX_HISTORY = 10;  //Keep status of services around for a bit
+  var MAX_HISTORY = 15;  //Keep status of services around for a bit
   var service_history = {}; 
   
   /**
@@ -252,20 +254,29 @@
       },
     });
   }
-
+  
+  
   function generateStatusView(target) {
     //Creates the DOM structure that will be used to hold results as they are 
     //pulled in from the servers.
     var t = $("#" + target);
     for ( var env in environments) {
-      var od = $("<div />", {
-        id : env
+      
+      //Container div, one per environment
+      var od = $("<details />", {
+        id : env,
+        'open':'1'
       });
-      var head = $("<h3>").html(environments[env]['name']);
-      od.append(head);
+      var summary = $("<summary />", {
+        id: "summary_" + env
+      }).html(environments[env]['name']);
+      //var head = $("<h3>").html();
+      //summary.append(head);
+      od.append(summary);
       var p = $("<p>",{text:'Primary IP: ', class:'info'});
       p.append($("<span>",{id:env+"~primary_ip", class:'ip_address'}));
       od.append(p);
+      
       var cns = environments[env]['cns'];
       var tb = $("<table>");
       var cgroup = $("<colgroup>");
@@ -294,6 +305,8 @@
         }));
       }
       tb.append(tr);
+      
+      // Time display
       tr = $("<tr>");
       tr.append($("<td>", {
         text : "Time",
@@ -308,6 +321,56 @@
         }));
       }
       tb.append(tr);
+
+      // Server Ping results
+      tr = $("<tr>");
+      tr.append($("<td>", {
+        text : "Ping",
+        title : 'Result of calling /v2/monitor/ping'
+      }));
+      for ( var cn in environments[env]['cns']) {
+        var id = env + "~" + cn + "~ping";
+        tr.append($("<td>", {
+          id : id,
+          text : '.',
+          class : 'data'
+        }));
+      }
+      tb.append(tr);
+
+      // Server CLOSE_WAIT counts
+      tr = $("<tr>");
+      tr.append($("<td>", {
+        text : "CLOSE_WAIT",
+        title : 'Number of CLOSE_WAIT states'
+      }));
+      for ( var cn in environments[env]['cns']) {
+        var id = env + "~" + cn + "~close_wait";
+        tr.append($("<td>", {
+          id : id,
+          text : '.',
+          class : 'data'
+        }));
+      }
+      tb.append(tr);
+
+      // Server ESTABLISHED counts
+      tr = $("<tr>");
+      tr.append($("<td>", {
+        text : "ESTABLISHED",
+        title : 'Number of ESTABLISHED states'
+      }));
+      for ( var cn in environments[env]['cns']) {
+        var id = env + "~" + cn + "~established";
+        tr.append($("<td>", {
+          id : id,
+          text : '.',
+          class : 'data'
+        }));
+      }
+      tb.append(tr);
+
+      //Properties of processing enablement
       for ( var idx in processing) {
         tr = $("<tr>");
         tr.append($("<td>", {
@@ -325,6 +388,7 @@
         tb.append(tr);
       }
 
+      //Various services
       for ( var svc in services) {
         tr = $("<tr>");
         tr.append($("<td>", {
@@ -345,6 +409,8 @@
         }
         tb.append(tr);
       }
+      
+      // Certificates used by the CNs
       for (var idx in certificates) {
         tr = $("<tr>");
         tr.append($("<td>", {
@@ -473,7 +539,7 @@
   }
   
   
-  function checkService(env, service, cn) {
+  function checkService(env, service, cn, overall) {
     var id = env + "~" + cn + "~" + service;
     var svc_info = getServiceInfoById(service);
     if (isServiceRunningCN(env, service, cn) > 0) {
@@ -481,17 +547,21 @@
       if (load >= svc_info['cpu_warn']) {
         setIdStatus(id, STATUS_WARN);
         eLog(env, svc_info['name'] + " CPU use seems high (" + environments[env]['cns'][cn]['stats']['services'][service][0][2] + ") on " + cn, STATUS_WARN);
+        overall[1] += 1;
       } else {
         setIdStatus(id, STATUS_OK);
+        overall[0] += 1;
       }
     } else {
       setIdStatus(id, STATUS_ERROR);
       eLog(env, svc_info['name'] + " is not running on " + cn, STATUS_ERROR);
+      overall[2] += 1;
     }
+    return overall
   }
   
   
-  function checkEnvironmentProcessing(env) {
+  function checkEnvironmentProcessing(env, overall) {
     // Check that processing is running on the primary CN and that
     // sync and replication are enabled and running on only one CN.
     var svc = 'd1-processing';
@@ -515,29 +585,41 @@
             setIdStatus(id, STATUS_OK);
             id = env + "~" + cn + "~" + 'Replication.active';
             setIdStatus(id, STATUS_OK);
+            overall[0] += 1;
           }
-        } else if (sync_enabled[cn] || repl_enabled[cn]) {
-          setIdStatus(id, STATUS_WARN);
-          eLog(env,'d1-processing is running but both synchronization and aggregation are not enabled' ,STATUS_WARN);
+        } else {
+          if (!sync_enabled[cn]) {
+            setIdStatus(id, STATUS_WARN);
+            eLog(env,'d1-processing is running but synchronization is not enabled' ,STATUS_WARN);
+            overall[1] += 1;
+          } else if (!repl_enabled[cn]) {
+            setIdStatus(id, STATUS_WARN);
+            eLog(env,'d1-processing is running but replication is not enabled' ,STATUS_WARN);
+            overall[1] += 1;            
+          }
         }
       } else //Service not running on CN: 
         if (( svc_running['n'] == 0) && ( (sync_enabled[cn] || repl_enabled[cn]) )) {
           if ( isPrimaryCN(env, cn) ) {
             setIdStatus(id, STATUS_ERROR);
             eLog(env,'d1-processing is not running on the primary CN' ,STATUS_ERROR);
+            overall[2] += 1;
           } else {
             setIdStatus(id, STATUS_WARN);
             eLog(env,'d1-processing is not running in this environment' ,STATUS_WARN);
+            overall[1] += 1;
           }
         } else if (svc_running['n'] == 1) {
           //Service not running on CN, but only one instance runing elsewhere
           setIdStatus(id, STATUS_OK);
+          overall[0] += 1;
         }
     }
+    return overall;
   }
   
 
-  function checkLogAggregation(env) {
+  function checkLogAggregation(env, overall) {
     //Must be running on one CN where agg is enabled and processing turned on.
     var id = '';
     var cn = '';
@@ -561,6 +643,7 @@
           if (!err1_logged) {
             eLog(env,'Log aggregation is not running in this environment.' ,STATUS_ERROR);
             err1_logged = true;
+            overall[2] += 1;
           }        
         } else if (svc_running[cn]) {
           if (both_running['n'] > 1) {
@@ -568,17 +651,20 @@
             if (!err2_logged) {
               eLog(env,'Log aggregation is running on more than one CN in this environment' ,STATUS_ERROR);
               err2_logged = true;
+              overall[2] += 1;
             }
           } else {
             setIdStatus(id, STATUS_OK);
+            overall[0] += 1;
           }
         } 
       } 
-    }    
+    }
+    return overall;
   }
   
   
-  function checkIndexing(env) {
+  function checkIndexing(env, overall) {
     //Index generator and processor should be running on one CN
     //Does not matter if it is not the primary CN (Zookeeper keeps things
     //in sync across the CNs)
@@ -593,6 +679,7 @@
         setIdStatus(id, STATUS_OK);
         id = env + "~" + cn + "~" + 'd1-index-task-processor';
         setIdStatus(id, STATUS_OK);
+        overall[0] += 1;
       } else if ((gen_running['n'] == 0) && (proc_running['n'] == 0)) {
         id = env + "~" + cn + "~" + 'd1-index-task-generator';
         setIdStatus(id, STATUS_ERROR);
@@ -601,6 +688,7 @@
         if (!err_logged) {
           eLog(env,'d1-index-task-generator and d1-index-task-processor are not running' ,STATUS_ERROR);
           err_logged = true;
+          overall[2] += 1;
         }
       } else {
         id = env + "~" + cn + "~" + 'd1-index-task-generator';
@@ -610,13 +698,15 @@
         if (!err_logged) {
           eLog(env,'Something is up with indexing, check index-task-processor and index-task-generator are running on the same host' ,STATUS_ERROR);
           err_logged = true;
+          overall[2] += 1;
         }       
       }
-    }    
+    }
+    return overall;
   }
 
   
-  function checkReportingTime(env) {
+  function checkReportingTime(env, overall) {
     for ( var cn in environments[env]['cns']) {
       var t0 = Date.parse(environments[env]['cns'][cn]['stats']['time_stamp']);
       var t1 = environments[env]['cns'][cn]['ts_retrieved'];
@@ -636,14 +726,34 @@
         }
         setIdStatus(id, STATUS_ERROR);
         eLog(env, "No report from CN for " + msg);
+        overall[2] += 1;
       } else {
         setIdStatus(id, STATUS_OK);
+        overall[0] += 1;
       }
     }
+    return overall;
+  }
+  
+  function checkPing(env, overall) {
+    for ( var cn in environments[env]['cns']) {
+      var pingres = environments[env]['cns'][cn]['stats']['ping'];
+      var id = env + "~" + cn + "~ping";
+      msg = cn;
+      if (pingres == 'FAIL') {
+        setIdStatus(id, STATUS_ERROR);
+        eLog(env, "Bad monitor/ping response for " + msg);
+        overall[2] += 1;
+      } else {
+        setIdStatus(id, STATUS_OK);
+        overall[0] += 1;
+      }
+    }
+    return overall;
   }
   
   
-  function checkCertificates(env) {
+  function checkCertificates(env, overall) {
     for ( var idx in certificates) {
       for ( var cn in environments[env]['cns']) {
         var id = env + "~" + cn + "~" + certificates[idx]['id'];
@@ -652,16 +762,18 @@
           v = environments[env]['cns'][cn]['stats']['certificates'][certificates[idx]['name']];
           if (v['expired'] > 0) {
             setIdStatus(id, STATUS_ERROR);
-            eLog(env, "Certificate " + v['file'] + " on " + cn + " expired.");            
+            eLog(env, "Certificate " + v['file'] + " on " + cn + " expired.");
+            overall[2] += 1;
           } else {
             setIdStatus(id, STATUS_OK);
+            overall[0] += 1;
           }
         } catch (err) {
           console.log("Error getting cert for " + cn);
         }
       }
     }
-    
+    return overall;
   }
   
   
@@ -681,7 +793,7 @@
     if (environments[env]['rendered']) {
       return;
     }
-    eLog(env, "----", -1);
+    //eLog(env, "----", -1);
     //Output the status data to the view
     for ( var cn in environments[env]['cns']) {
       var v = "-";
@@ -698,6 +810,36 @@
       var id = env + "~" + cn + "~timestamp";
       try {
         v = environments[env]['cns'][cn]['stats']['time_stamp'].split('.')[0];
+        $('[id="' + id + '"]').html(v);
+      } catch (err) {
+        console.log("Error getting stuff for " + cn);
+      }
+    }
+    for ( var cn in environments[env]['cns']) {
+      var v = "-";
+      var id = env + "~" + cn + "~ping";
+      try {
+        v = environments[env]['cns'][cn]['stats']['ping'];
+        $('[id="' + id + '"]').html(v);
+      } catch (err) {
+        console.log("Error getting stuff for " + cn);
+      }
+    }
+    for ( var cn in environments[env]['cns']) {
+      var v = "-";
+      var id = env + "~" + cn + "~close_wait";
+      try {
+        v = environments[env]['cns'][cn]['stats']['close_waits'];
+        $('[id="' + id + '"]').html(v);
+      } catch (err) {
+        console.log("Error getting stuff for " + cn);
+      }
+    }
+    for ( var cn in environments[env]['cns']) {
+      var v = "-";
+      var id = env + "~" + cn + "~established";
+      try {
+        v = environments[env]['cns'][cn]['stats']['established'];
         $('[id="' + id + '"]').html(v);
       } catch (err) {
         console.log("Error getting stuff for " + cn);
@@ -761,10 +903,12 @@
     
     // Now compute if the service states are OK or if something unexepected is
     // going on
+    var overall = [0,0,0]; // OK, WARN, ERROR
     if (environments[env]['primary_ip'] != '') {
       var id = env+"~primary_ip";
       $('[id="' + id + '"]').text(environments[env]['primary_ip']);
-      checkReportingTime(env);
+      overall = checkReportingTime(env, overall);
+      overall = checkPing(env, overall);
       for ( var cn in environments[env]['cns']) {
         var id = env + '~col~' + cn;
         var is_primary = false;
@@ -774,25 +918,32 @@
         } else {
           $('[id="' + id + '"]').removeClass('is_primary');          
         }
-        checkService(env, 'postgresql', cn);
-	      checkService(env, 'SLAPD', cn);
-	      checkService(env, 'tomcat7', cn);
-	      checkService(env, 'zookeeper', cn);
+        overall = checkService(env, 'postgresql', cn, overall);
+        overall = checkService(env, 'SLAPD', cn, overall);
+        overall = checkService(env, 'tomcat7', cn, overall);
+        overall = checkService(env, 'zookeeper', cn, overall);
       }
-      checkEnvironmentProcessing(env);
-      checkLogAggregation(env);
-      checkIndexing(env);
-      checkCertificates(env);
+      overall = checkEnvironmentProcessing(env, overall);
+      overall = checkLogAggregation(env, overall);
+      overall = checkIndexing(env, overall);
+      overall = checkCertificates(env, overall);
     }
     
+    var id = "summary_" + env;
+    if (overall[2] > 0) {
+      setIdStatus(id, STATUS_ERROR); 
+    } else if (overall[1] > 0) {
+      setIdStatus(id, STATUS_WARN);
+    } else {
+      setIdStatus(id, STATUS_OK);
+      eLog(env, "", STATUS_OK);
+    }
     renderLog(env);
     environments[env]['rendered'] = true;
   }
 
   function getCNStatusJSON(environment, cn) {
     //Load the service status for the cn
-    //TODO: Errors a mininmally handled - need to add logs for each environment
-    // and write out problems.
     var res = {};
     $.ajax({
       dataType : "json",

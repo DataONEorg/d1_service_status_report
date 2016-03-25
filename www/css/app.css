@@ -1,4 +1,18 @@
 
+summary {
+  margin-top: 0;
+  margin-bottom: 2rem;
+  font-weight: 300;  
+  font-size: 1.6rem; 
+  line-height: 1.3;  
+  letter-spacing: -.1rem;
+}
+
+@media (min-width: 550px) {
+  summary {
+	 font-size: 2.1rem;
+  }
+}
 
 td {
   padding: 4px 5px;
