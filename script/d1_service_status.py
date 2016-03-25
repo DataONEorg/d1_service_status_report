@@ -20,7 +20,31 @@ import re
 import datetime
 import json
 import commands
+import urllib2
+import time
+import ssl
 from OpenSSL import crypto
+
+
+def pingSelf(address):
+  '''Call /v2/monitor/ping and record the result.
+  '''
+  url = "https://{0}/cn/v2/monitor/ping".format(address)
+  t0 = time.clock()
+  try:
+    res = urllib2.urlopen(url, timeout=5)
+  except urllib2.HTTPError as e:
+    return "FAIL : %s" % str(e)
+  except ssl.SSLError as e:
+    return "FAIL : %s" % str(e)
+
+  t1 = time.clock()
+  delta = t1 - t0
+  try:
+    return "%s (%.3f sec)" % (res.headers['date'], delta)
+  except:
+    pass
+  return 'FAIL (%.3f sec)' % delta
 
 
 def loadNodeProperties(prop_file='/etc/dataone/node.properties'):
@@ -120,6 +144,21 @@ def getProcessingEnablement():
       res[to_examine[prop]] = True
   return res
   
+  
+def getConnections():
+  '''Return the current number of connections in CLOSE_WAIT, ESTABLISHED
+  '''
+  n_cw = 0
+  n_es = 0
+  outp = commands.getstatusoutput("lsof -i")
+  tmp = outp[1].split("\n")
+  for row in tmp:
+    if re.search("CLOSE_WAIT", row):
+      n_cw += 1
+    elif re.search("ESTABLISHED", row):
+      n_es += 1
+  return n_cw, n_es
+
 
 def getCNStatus():
   '''Main method for gathering stats.
@@ -137,11 +176,14 @@ def getCNStatus():
   
   #Load the node properties
   properties = loadNodeProperties()
+  fqdn = getFQDN()
   
   # Results are added to this structure, which is finally output as JSON
   res = {'time_stamp': datetime.datetime.utcnow().isoformat(),
-         'fqdn': getFQDN(),
+         'fqdn': fqdn,
           }
+  res['ping'] = pingSelf(fqdn)
+  res['close_waits'], res['established'] = getConnections()
   res['ip_address'] = socket.gethostbyname(res['fqdn'])
   res['service_entries'] = ['PID','eTime','pCPU','pMEM']
   res['services'] = {}
