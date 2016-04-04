@@ -11,7 +11,6 @@
   <link rel="icon" type="image/png" href="images/favicon.ico">
 <script type="text/javascript" 
    src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js" ></script>   
-<script type="text/javascript" src="js/jquery.sparkline.2.2.1.min.js" ></script>   
 
 <script type="text/javascript">
 
@@ -29,6 +28,9 @@
   // Allow up to five minutes difference in time stamps of content revied to
   // that of the client.
   var MAX_TIME_DELTA=1000*60*5; 
+  
+  //Sync should show something within last 30 minutes
+  var MAX_TIME_SYNCLOG=1000*60*30; 
 
   var services = [ {
     id : 'd1-processing',
@@ -260,8 +262,18 @@
     //Creates the DOM structure that will be used to hold results as they are 
     //pulled in from the servers.
     var t = $("#" + target);
+    var mentries = [];
     for ( var env in environments) {
-      
+      //Add menu entry
+      mentries.push("<a href='#" + env + "' class='menu'>" + environments[env]['name'] + "</a>");
+    }
+    var m_entry = $("<div />", {'html':mentries.join("&nbsp;|&nbsp;"), 
+                                'class':'twelve columns',
+                                'style':'margin-bottom: 10px',
+                                'id':'top'});
+    $("#environment_links").append(m_entry);
+    
+    for ( var env in environments) {
       //Container div, one per environment
       var od = $("<details />", {
         id : env,
@@ -388,6 +400,22 @@
         tb.append(tr);
       }
 
+      //Log timestamps
+      tr = $("<tr>");
+      tr.append($("<td>", {
+        text : "Sync Log",
+        title : 'Timestamp of last good log message'
+      }));
+      for ( var cn in environments[env]['cns']) {
+        var id = env + "~" + cn + "~log-sync";
+        tr.append($("<td>", {
+          id : id,
+          text : '.',
+          class : 'data'
+        }));
+      }
+      tb.append(tr);      
+      
       //Various services
       for ( var svc in services) {
         tr = $("<tr>");
@@ -561,6 +589,31 @@
   }
   
   
+  function checkSyncLogTime(env, cn) {
+    var id = env + "~" + cn + "~log-sync";
+    var t0 = Date.parse(environments[env]['cns'][cn]['stats']['logs']['synchronization']);
+    var t1 = environments[env]['cns'][cn]['ts_retrieved'];
+    var delta = Math.abs(t1-t0);
+    if ( delta > MAX_TIME_SYNCLOG ) {
+      delta = delta / (1000 * 60.0);
+      var msg = '';
+      if (delta > 120) {
+        delta = delta / 60;
+        msg = Math.round(delta) + " hours";
+        if (delta > 48) {
+          msg = Math.round(delta/24) + " days";
+        }
+      } else {
+        msg = Math.round(delta) + " minutes";
+      }
+      setIdStatus(id, STATUS_ERROR);
+      eLog(env, "No new messages in sync log for " + msg);
+    } else {
+      setIdStatus(id, STATUS_OK);
+    }
+  }
+  
+  
   function checkEnvironmentProcessing(env, overall) {
     // Check that processing is running on the primary CN and that
     // sync and replication are enabled and running on only one CN.
@@ -585,7 +638,8 @@
             setIdStatus(id, STATUS_OK);
             id = env + "~" + cn + "~" + 'Replication.active';
             setIdStatus(id, STATUS_OK);
-            overall[0] += 1;
+            overall[0] += 1;            
+            checkSyncLogTime(env, cn);
           }
         } else {
           if (!sync_enabled[cn]) {
@@ -845,6 +899,18 @@
         console.log("Error getting stuff for " + cn);
       }
     }
+    //Log timestamps
+    for ( var cn in environments[env]['cns']) {
+      var v = "-";
+      var id = env + "~" + cn + "~log-sync";
+      try {
+        v = environments[env]['cns'][cn]['stats']['logs']['synchronization'];
+        $('[id="' + id + '"]').html(v);
+      } catch (err) {
+        console.log("Error getting stuff for " + cn);
+      }
+    }
+    
     for ( var idx in processing) {
       for ( var cn in environments[env]['cns']) {
         var id = env + "~" + cn + "~" + processing[idx]['id'];
@@ -1006,7 +1072,8 @@
     Services Overview</h1>
       </div>
     </div> <!-- row -->
-    
+    <div class='row' id='environment_links'>
+    </div>
     <div class="row">
       <div class="12 columns" style="margin-top: 0%">
         <div id="reports"></div>

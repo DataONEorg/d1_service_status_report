@@ -25,6 +25,7 @@ import time
 import ssl
 from OpenSSL import crypto
 
+date_match = re.compile("\d*\-\d*\-\d*\s\d*:\d*:\d*")
 
 def pingSelf(address):
   '''Call /v2/monitor/ping and record the result.
@@ -83,6 +84,26 @@ def checkCertificates(props):
   res['client'] = checkCertificate(client_cert)
   res['postgres'] = checkCertificate('/var/lib/postgresql/9.1/main/server.crt')
   return res
+
+
+def checkSyncLogActivity():
+  '''Look at cn-synchronization log to check for activity.
+  
+  egrep "INFO]\s(.*)V2TransferObjectTask:createObject" \
+    /var/log/dataone/synchronize/cn-synchronization.log | tail -n1
+    
+  [ INFO] 2016-04-04 15:53:36,403 (V2TransferObjectTask:createObject:693) Task-urn:node:NCEI-{A8C0744B-B58C-4D4D-AE9C-E241ADC67D42} Creating Object
+  '''
+  #cmd = "egrep \"INFO]\s(.*)V2TransferObjectTask:createObject\" /var/log/dataone/synchronize/cn-synchronization.log | tail -n1"
+  cmd = "egrep \"INFO]\s(.*)\s\" /var/log/dataone/synchronize/cn-synchronization.log | tail -n1"
+  outp = commands.getstatusoutput(cmd)
+  if outp[0] == 0:
+    match = date_match.search(outp[1])
+    if match is not None:
+      tstr = match.group(0)
+      dt = datetime.datetime.strptime(tstr, "%Y-%m-%d %H:%M:%S")
+      return dt.isoformat()
+  return ''
 
 
 def getFQDN():
@@ -191,7 +212,11 @@ def getCNStatus():
   for name in services.keys():
     res['services'][name] = getServicePids(processes, services[name])
   res['processing'] = getProcessingEnablement()
-  res['certificates'] = checkCertificates(properties) 
+  res['certificates'] = checkCertificates(properties)
+  res['logs'] = {'synchronization': '',
+                 'replication':'',
+                 'logaggregation':''}
+  res['logs']['synchronization'] = checkSyncLogActivity()
   return res
 
 

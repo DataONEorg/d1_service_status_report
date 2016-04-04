@@ -79,3 +79,13 @@ span.ip_address {
   border: none;
 }
 
+
+a.menu { color: #222;
+         font-size: 110%;
+         font-variant: small-caps;
+         text-decoration: none;
+}
+
+a.menu:hover {
+	text-decoration: underline;
+}
