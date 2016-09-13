@@ -106,6 +106,35 @@ def checkSyncLogActivity():
   return ''
 
 
+def checkIndexGeneratorActivity():
+  '''
+  '''
+  cmd = "egrep \"INFO](.*):entryUpdated\" /var/log/dataone/synchronize/cn-index-generator-daemon.log | tail -n1"
+  outp = commands.getstatusoutput(cmd)
+  if outp[0] == 0:
+    match = date_match.search(outp[1])
+    if match is not None:
+      tstr = match.group(0)
+      dt = datetime.datetime.strptime(tstr, "%Y-%m-%d %H:%M:%S")
+      return dt.isoformat()
+  return ''
+    
+
+def checkIndexProcessorActivity():
+  '''
+  Indexing complete for pid
+  '''
+  cmd = "egrep \"INFO](.*)Indexing complete for pid:\" /var/log/dataone/synchronize/cn-index-processor-daemon.log | tail -n1"
+  outp = commands.getstatusoutput(cmd)
+  if outp[0] == 0:
+    match = date_match.search(outp[1])
+    if match is not None:
+      tstr = match.group(0)
+      dt = datetime.datetime.strptime(tstr, "%Y-%m-%d %H:%M:%S")
+      return dt.isoformat()
+  return ''
+
+
 def getFQDN():
   res = commands.getstatusoutput("hostname -f")
   return res[1]
@@ -181,6 +210,20 @@ def getConnections():
   return n_cw, n_es
 
 
+def getHazelcastMembership(port=5701):
+  url = "http://localhost:%d/hazelcast/rest/cluster" % port
+  res = urllib2.urlopen(url, timeout=2)
+  body = res.read().split("\n")
+  data = {'cluster':port,
+          'members':[]}
+  for line in body:
+    line = line.strip()
+    if line.startswith('Member'):
+      words = line.split(' ')
+      data['members'].append(words[2])
+  return data
+
+
 def getCNStatus():
   '''Main method for gathering stats.
   '''
@@ -215,8 +258,13 @@ def getCNStatus():
   res['certificates'] = checkCertificates(properties)
   res['logs'] = {'synchronization': '',
                  'replication':'',
-                 'logaggregation':''}
+                 'logaggregation':'',
+                 'indexgenerator':'',
+                 'indexprocessor': '',
+                 }
   res['logs']['synchronization'] = checkSyncLogActivity()
+  res['logs']['indexgenerator'] = checkIndexGeneratorActivity()
+  res['logs']['indexprocessor'] = checkIndexProcessorActivity()
   return res
 
 
