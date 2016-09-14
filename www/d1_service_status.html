@@ -32,6 +32,12 @@
   //Sync should show something within last 30 minutes
   var MAX_TIME_SYNCLOG=1000*60*30; 
 
+  //Index generator should show something within last 24 hours
+  var MAX_TIME_INDEX_GEN_LOG=1000*60*60*24; 
+
+  //Index processor should show something within last 24 hours
+  var MAX_TIME_INDEX_PROC_LOG=1000*60*60*24; 
+
   var services = [ {
     id : 'd1-processing',
     name : 'D1-Processing',
@@ -658,7 +664,7 @@
     var t0 = Date.parse(environments[env]['cns'][cn]['stats']['logs']['indexgenerator']);
     var t1 = environments[env]['cns'][cn]['ts_retrieved'];
     var delta = Math.abs(t1-t0);
-    if ( delta > MAX_TIME_SYNCLOG ) {
+    if ( delta > MAX_TIME_INDEX_GEN_LOG ) {
       delta = delta / (1000 * 60.0);
       var msg = '';
       if (delta > 120) {
@@ -683,7 +689,7 @@
     var t0 = Date.parse(environments[env]['cns'][cn]['stats']['logs']['indexprocessor']);
     var t1 = environments[env]['cns'][cn]['ts_retrieved'];
     var delta = Math.abs(t1-t0);
-    if ( delta > MAX_TIME_SYNCLOG ) {
+    if ( delta > MAX_TIME_INDEX_PROC_LOG ) {
       delta = delta / (1000 * 60.0);
       var msg = '';
       if (delta > 120) {
@@ -710,10 +716,18 @@
     var svc_running = isServiceRunning(env, svc);
     var sync_enabled = isProcessEnabled(env, 'Synchronization.active');
     var repl_enabled = isProcessEnabled(env, 'Replication.active');
+    var idx_gen_running = isServiceRunning(env, "d1-index-task-generator");
+    var idx_proc_running = isServiceRunning(env, "d1-index-task-processor");
     var id = '';
     var cn = '';
     for ( cn in environments[env]['cns']) {
       id = env + "~" + cn + "~" + svc;
+      if ( idx_gen_running[cn] ) {
+        checkIndexGeneratorLogTime(env, cn);
+      }
+      if ( idx_proc_running[cn] ) {
+        checkIndexProcessorLogTime(env, cn);
+      }
       if ( svc_running[cn] ) { //Service running on the CN
         if (sync_enabled[cn] && repl_enabled[cn]) { //With sync and replication enabled.
           if (svc_running['n'] > 1) {
