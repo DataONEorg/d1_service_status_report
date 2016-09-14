@@ -404,7 +404,9 @@
       tr = $("<tr>");
       tr.append($("<td>", {
         text : "Sync Log",
-        title : 'Timestamp of last good log message'
+        title : 'Timestamp of last good log message. \n' +
+                'egrep "INFO]\s(.*)V2TransferObjectTask:createObject" '  +
+                '/var/log/dataone/synchronize/cn-synchronization.log'
       }));
       for ( var cn in environments[env]['cns']) {
         var id = env + "~" + cn + "~log-sync";
@@ -415,6 +417,43 @@
         }));
       }
       tb.append(tr);      
+      
+      //Log timestamps
+      tr = $("<tr>");
+      tr.append($("<td>", {
+        text : "Index Generator Log",
+        title : 'Timestamp of last good log message. \n' +
+                'egrep "INFO](.*):entryUpdated\" ' +
+                '/var/log/dataone/index/cn-index-generator-daemon.log'
+      }));
+      for ( var cn in environments[env]['cns']) {
+        var id = env + "~" + cn + "~log-indexgenerator";
+        tr.append($("<td>", {
+          id : id,
+          text : '.',
+          class : 'data'
+        }));
+      }
+      tb.append(tr);      
+
+      //Log timestamps
+      tr = $("<tr>");
+      tr.append($("<td>", {
+        text : "Index Processor Log",
+        title : 'Timestamp of last good log message. \n' +
+                'egrep "INFO](.*)Indexing complete for pid:\" ' +
+                '/var/log/dataone/index/cn-index-processor-daemon.log'
+      }));
+      for ( var cn in environments[env]['cns']) {
+        var id = env + "~" + cn + "~log-indexprocessor";
+        tr.append($("<td>", {
+          id : id,
+          text : '.',
+          class : 'data'
+        }));
+      }
+      tb.append(tr);      
+
       
       //Various services
       for ( var svc in services) {
@@ -608,6 +647,56 @@
       }
       setIdStatus(id, STATUS_ERROR);
       eLog(env, "No new messages in sync log for " + msg);
+    } else {
+      setIdStatus(id, STATUS_OK);
+    }
+  }
+  
+
+  function checkIndexGeneratorLogTime(env, cn) {
+    var id = env + "~" + cn + "~log-indexgenerator";
+    var t0 = Date.parse(environments[env]['cns'][cn]['stats']['logs']['indexgenerator']);
+    var t1 = environments[env]['cns'][cn]['ts_retrieved'];
+    var delta = Math.abs(t1-t0);
+    if ( delta > MAX_TIME_SYNCLOG ) {
+      delta = delta / (1000 * 60.0);
+      var msg = '';
+      if (delta > 120) {
+        delta = delta / 60;
+        msg = Math.round(delta) + " hours";
+        if (delta > 48) {
+          msg = Math.round(delta/24) + " days";
+        }
+      } else {
+        msg = Math.round(delta) + " minutes";
+      }
+      setIdStatus(id, STATUS_ERROR);
+      eLog(env, "No new messages in index generator log for " + msg);
+    } else {
+      setIdStatus(id, STATUS_OK);
+    }
+  }
+  
+  
+  function checkIndexProcessorLogTime(env, cn) {
+    var id = env + "~" + cn + "~log-indexprocessor";
+    var t0 = Date.parse(environments[env]['cns'][cn]['stats']['logs']['indexprocessor']);
+    var t1 = environments[env]['cns'][cn]['ts_retrieved'];
+    var delta = Math.abs(t1-t0);
+    if ( delta > MAX_TIME_SYNCLOG ) {
+      delta = delta / (1000 * 60.0);
+      var msg = '';
+      if (delta > 120) {
+        delta = delta / 60;
+        msg = Math.round(delta) + " hours";
+        if (delta > 48) {
+          msg = Math.round(delta/24) + " days";
+        }
+      } else {
+        msg = Math.round(delta) + " minutes";
+      }
+      setIdStatus(id, STATUS_ERROR);
+      eLog(env, "No new messages in index processor log for " + msg);
     } else {
       setIdStatus(id, STATUS_OK);
     }
@@ -905,6 +994,26 @@
       var id = env + "~" + cn + "~log-sync";
       try {
         v = environments[env]['cns'][cn]['stats']['logs']['synchronization'];
+        $('[id="' + id + '"]').html(v);
+      } catch (err) {
+        console.log("Error getting stuff for " + cn);
+      }
+    }
+    for ( var cn in environments[env]['cns']) {
+      var v = "-";
+      var id = env + "~" + cn + "~log-indexgenerator";
+      try {
+        v = environments[env]['cns'][cn]['stats']['logs']['indexgenerator'];
+        $('[id="' + id + '"]').html(v);
+      } catch (err) {
+        console.log("Error getting stuff for " + cn);
+      }
+    }
+    for ( var cn in environments[env]['cns']) {
+      var v = "-";
+      var id = env + "~" + cn + "~log-indexprocessor";
+      try {
+        v = environments[env]['cns'][cn]['stats']['logs']['indexprocessor'];
         $('[id="' + id + '"]').html(v);
       } catch (err) {
         console.log("Error getting stuff for " + cn);
