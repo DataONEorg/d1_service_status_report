@@ -13,7 +13,7 @@ To update an existing deployment::
 
 '''
 import os
-from fabric.api import env, run, sudo, put, quiet
+from fabric.api import env, run, sudo, put, quiet, parallel
 from fabric.contrib.project import rsync_project
 
 '''
@@ -98,7 +98,9 @@ env.roledefs['cns']['hosts'] = env.roledefs['dev']['hosts'] + \
                                env.roledefs['stage']['hosts'] + \
                                env.roledefs['stage-2']['hosts'] + \
                                env.roledefs['production']['hosts']
-                                 
+
+
+@parallel                                
 def updateDeployedScript():
   '''
   Overwrite the deployed script with the current one.
