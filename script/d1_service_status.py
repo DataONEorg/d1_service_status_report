@@ -24,6 +24,7 @@ import urllib2
 import time
 import ssl
 from OpenSSL import crypto
+import logging
 
 date_match = re.compile("\d*\-\d*\-\d*\s\d*:\d*:\d*")
 
@@ -109,7 +110,8 @@ def checkSyncLogActivity():
 def checkIndexGeneratorActivity():
   '''
   '''
-  cmd = "egrep \"INFO](.*):entryUpdated\" /var/log/dataone/synchronize/cn-index-generator-daemon.log | tail -n1"
+  cmd = "egrep \"INFO](.*):entryUpdated\" /var/log/dataone/index/cn-index-generator-daemon.log | tail -n1"
+  logging.debug('checkIndexGeneratorActivity: ' + cmd)
   outp = commands.getstatusoutput(cmd)
   if outp[0] == 0:
     match = date_match.search(outp[1])
@@ -124,7 +126,7 @@ def checkIndexProcessorActivity():
   '''
   Indexing complete for pid
   '''
-  cmd = "egrep \"INFO](.*)Indexing complete for pid:\" /var/log/dataone/synchronize/cn-index-processor-daemon.log | tail -n1"
+  cmd = "egrep \"INFO](.*)Indexing complete for pid:\" /var/log/dataone/index/cn-index-processor-daemon.log | tail -n1"
   outp = commands.getstatusoutput(cmd)
   if outp[0] == 0:
     match = date_match.search(outp[1])
@@ -270,6 +272,7 @@ def getCNStatus():
 
 if __name__ == "__main__":
   dest = "/var/www/d1_service_status.json"
+  logging.basicConfig(level=logging.WARN)
   if len(sys.argv) > 1:
     dest = sys.argv[1]
   status_report = getCNStatus()
