@@ -16,94 +16,18 @@ import os
 from fabric.api import env, run, sudo, put, quiet, parallel
 from fabric.contrib.project import rsync_project
 
-'''
-HOSTS="cn-dev-ucsb-1.test.dataone.org,cn-dev-unm-1.test.dataone.org,cn-dev-orc-1.test.dataone.org"
-fab -I -H ${HOSTS} updateDeployedScript
-HOSTS="cn-dev-ucsb-2.test.dataone.org,cn-dev-unm-2.test.dataone.org"
-fab -I -H ${HOSTS} updateDeployedScript
-HOSTS="cn-sandbox-ucsb-1.test.dataone.org,cn-sandbox-unm-1.test.dataone.org,cn-sandbox-orc-1.test.dataone.org"
-fab -I -H ${HOSTS} updateDeployedScript
-HOSTS="cn-sandbox-ucsb-2.test.dataone.org"
-fab -I -H ${HOSTS} updateDeployedScript
-HOSTS="cn-stage-ucsb-1.test.dataone.org,cn-stage-unm-1.test.dataone.org,cn-stage-orc-1.test.dataone.org"
-fab -I -H ${HOSTS} updateDeployedScript
-HOSTS="cn-stage-unm-2.test.dataone.org"
-fab -I -H ${HOSTS} updateDeployedScript
-HOSTS="cn-ucsb-1.dataone.org,cn-unm-1.dataone.org,cn-orc-1.dataone.org"
-fab -I -H ${HOSTS} updateDeployedScript
-
-HOSTS="cn-dev-ucsb-1.test.dataone.org,cn-dev-unm-1.test.dataone.org,cn-dev-orc-1.test.dataone.org"
-HOSTS="${HOSTS},cn-dev-ucsb-2.test.dataone.org,cn-dev-unm-2.test.dataone.org"
-HOSTS="${HOSTS},cn-sandbox-ucsb-1.test.dataone.org,cn-sandbox-unm-1.test.dataone.org,cn-sandbox-orc-1.test.dataone.org"
-HOSTS="${HOSTS},cn-sandbox-ucsb-2.test.dataone.org"
-HOSTS="${HOSTS},cn-stage-ucsb-1.test.dataone.org,cn-stage-unm-1.test.dataone.org,cn-stage-orc-1.test.dataone.org"
-HOSTS="${HOSTS},cn-stage-unm-2.test.dataone.org"
-HOSTS="${HOSTS},cn-ucsb-1.dataone.org,cn-unm-1.dataone.org,cn-orc-1.dataone.org"
-
-'''
-
 SCRIPT_FILE = "d1_service_status.py"
 CROND_FILE = "d1_service_status_cron" 
-
-env.roledefs = {
-    'web': {
-      'hosts':['monitor.dataone.org', ],
-      },
-    'dev': {
-      'hosts': ['cn-dev-ucsb-1.test.dataone.org',
-                'cn-dev-unm-1.test.dataone.org',
-                'cn-dev-orc-1.test.dataone.org',
-                ],
-      },
-    'dev-2': {
-      'hosts': ['cn-dev-ucsb-2.test.dataone.org',
-                'cn-dev-unm-2.test.dataone.org',
-                ],
-      },
-    'sandbox': {
-      'hosts': ['cn-sandbox-ucsb-1.test.dataone.org',
-                'cn-sandbox-unm-1.test.dataone.org',
-                'cn-sandbox-orc-1.test.dataone.org',
-                ],
-      },
-    'sandbox-2': {
-      'hosts': ['cn-sandbox-ucsb-2.test.dataone.org',
-                ],
-      },
-    'stage': {
-      'hosts': ['cn-stage-ucsb-1.test.dataone.org',
-                'cn-stage-unm-1.test.dataone.org',
-                'cn-stage-orc-1.test.dataone.org',
-                ],
-      },
-    'stage-2': {
-      'hosts': ['cn-stage-unm-2.test.dataone.org',
-                ],
-      },
-    'production': {
-      'hosts': ['cn-ucsb-1.dataone.org',
-                'cn-unm-1.dataone.org',
-                'cn-orc-1.dataone.org',
-                ],
-      },
-    'cns': {
-        'hosts': []
-      },
-  }
-
-env.roledefs['cns']['hosts'] = env.roledefs['dev']['hosts'] + \
-                               env.roledefs['dev-2']['hosts'] + \
-                               env.roledefs['sandbox']['hosts'] + \
-                               env.roledefs['sandbox-2']['hosts'] + \
-                               env.roledefs['stage']['hosts'] + \
-                               env.roledefs['stage-2']['hosts'] + \
-                               env.roledefs['production']['hosts']
 
 
 @parallel                                
 def updateDeployedScript():
   '''
   Overwrite the deployed script with the current one.
+  
+  e.g. 
+  
+  fab -I -H cn-dev-unm-1.test.dataone.org updateDeployedScript
   '''
   put(os.path.join('script/',SCRIPT_FILE), "/usr/local/bin", use_sudo=True, mode=0755)
   sudo("/usr/local/bin/d1_service_status -")
@@ -111,6 +35,9 @@ def updateDeployedScript():
 
 def deployToCN():
   '''Deploy the script, create a symlink, and add to cron
+  
+  e.g.:
+    fab -I -H cn-dev-unm-1.test.dataone.org deployToCN
   '''
   put(os.path.join('script/',SCRIPT_FILE), "/usr/local/bin", use_sudo=True)
   run( "chmod a+x /usr/local/bin/" + SCRIPT_FILE )
@@ -125,6 +52,9 @@ def deployToCN():
   
 def updateWebSite():
   '''run rsync to update site on monitor.dataone.org
+  
+  e.g.:
+    fab -I -H monitor.dataone.org updateWebSite
   '''
   rsync_project('/var/www/status/', 
                 local_dir='www/')
