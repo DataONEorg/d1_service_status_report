@@ -82,7 +82,21 @@
     title : 'Value of logAggregation.properties'
   } ];
 
-  
+
+  var indexing = [ {
+      id : 'indexing.inprocess',
+      name : 'Currently Indexing',
+      title : 'Number of entries that currently being processed by indexing'
+  }, {
+      id : 'indexing.new',
+      name : 'Awaiting Indexing',
+      title : 'Number of entries that currently being processed by indexing'
+  }, {
+      id : 'indexing.failed',
+      name : 'Failed Indexing',
+      title : 'Number of entries that failed index processing'
+  }];
+
   var certificates = [ {
     id : 'certificate.wildcard',
     name: 'wildcard',
@@ -99,7 +113,7 @@
     id : 'certificate.postgres',
     name: 'postgres',
     title: 'Postgres Cert.'
-  }]
+  }];
   
   
   //TODO: load the CNs from the node list at each environment.
@@ -231,7 +245,7 @@
         }
       }
     }
-  }
+  };
 
   var MAX_LOG_ENTRIES = 25;  //Max number of rows in each environment log
   var MAX_HISTORY = 15;  //Keep status of services around for a bit
@@ -259,7 +273,7 @@
             break;
           }
         }
-      },
+      }
     });
   }
   
@@ -269,7 +283,11 @@
     //pulled in from the servers.
     var t = $("#" + target);
     var mentries = [];
-    for ( var env in environments) {
+    var env;
+    var id;
+    var cn;
+    var idx;
+    for ( env in environments) {
       //Add menu entry
       mentries.push("<a href='#" + env + "' class='menu'>" + environments[env]['name'] + "</a>");
     }
@@ -279,7 +297,7 @@
                                 'id':'top'});
     $("#environment_links").append(m_entry);
     
-    for ( var env in environments) {
+    for ( env in environments) {
       //Container div, one per environment
       var od = $("<details />", {
         id : env,
@@ -291,8 +309,8 @@
       //var head = $("<h3>").html();
       //summary.append(head);
       od.append(summary);
-      var p = $("<p>",{text:'Primary IP: ', class:'info'});
-      p.append($("<span>",{id:env+"~primary_ip", class:'ip_address'}));
+      var p = $("<p>",{text:'Primary IP: ', 'class':'info'});
+      p.append($("<span>",{id:env+"~primary_ip", 'class':'ip_address'}));
       od.append(p);
       
       var cns = environments[env]['cns'];
@@ -301,9 +319,9 @@
       var tr = $("<tr>");
       tr.append($("<th>", {
         text : 'Node'
-      }))
+      }));
       cgroup.append($("<col>",{id: env + "~col~labels"}));
-      for ( var cn in environments[env]['cns']) {
+      for (cn in environments[env]['cns']) {
         var name = cn.split('.')[0];
         tr.append($("<th>").html(name));
         cgroup.append($("<col>", {id: env + '~col~' + cn}));
@@ -314,12 +332,12 @@
       tr.append($("<td>", {
         text : "IP Address"
       }));
-      for ( var cn in environments[env]['cns']) {
-        var id = env + "~" + cn + "~ipaddr";
+      for (cn in environments[env]['cns']) {
+        id = env + "~" + cn + "~ipaddr";
         tr.append($("<td>", {
           id : id,
           text : '.',
-          class : 'data'
+          'class' : 'data'
         }));
       }
       tb.append(tr);
@@ -330,12 +348,12 @@
         text : "Time",
         title : 'System time on node.'
       }));
-      for ( var cn in environments[env]['cns']) {
-        var id = env + "~" + cn + "~timestamp";
+      for (cn in environments[env]['cns']) {
+        id = env + "~" + cn + "~timestamp";
         tr.append($("<td>", {
           id : id,
           text : '.',
-          class : 'data'
+          'class' : 'data'
         }));
       }
       tb.append(tr);
@@ -346,12 +364,12 @@
         text : "Ping",
         title : 'Result of calling /v2/monitor/ping'
       }));
-      for ( var cn in environments[env]['cns']) {
-        var id = env + "~" + cn + "~ping";
+      for ( cn in environments[env]['cns']) {
+        id = env + "~" + cn + "~ping";
         tr.append($("<td>", {
           id : id,
           text : '.',
-          class : 'data'
+          'class' : 'data'
         }));
       }
       tb.append(tr);
@@ -362,12 +380,12 @@
         text : "CLOSE_WAIT",
         title : 'Number of CLOSE_WAIT states'
       }));
-      for ( var cn in environments[env]['cns']) {
-        var id = env + "~" + cn + "~close_wait";
+      for (cn in environments[env]['cns']) {
+        id = env + "~" + cn + "~close_wait";
         tr.append($("<td>", {
           id : id,
           text : '.',
-          class : 'data'
+          'class' : 'data'
         }));
       }
       tb.append(tr);
@@ -378,29 +396,29 @@
         text : "ESTABLISHED",
         title : 'Number of ESTABLISHED states'
       }));
-      for ( var cn in environments[env]['cns']) {
-        var id = env + "~" + cn + "~established";
+      for (cn in environments[env]['cns']) {
+        id = env + "~" + cn + "~established";
         tr.append($("<td>", {
           id : id,
           text : '.',
-          class : 'data'
+          'class' : 'data'
         }));
       }
       tb.append(tr);
 
       //Properties of processing enablement
-      for ( var idx in processing) {
+      for (idx in processing) {
         tr = $("<tr>");
         tr.append($("<td>", {
           text : processing[idx]['name'],
           title : processing[idx]['title']
         }));
-        for ( var cn in environments[env]['cns']) {
-          var id = env + "~" + cn + "~" + processing[idx]['id'];
+        for ( cn in environments[env]['cns']) {
+          id = env + "~" + cn + "~" + processing[idx]['id'];
           tr.append($("<td>", {
             id : id,
             text : '.',
-            class : 'data'
+            'class' : 'data'
           }));
         }
         tb.append(tr);
@@ -414,12 +432,12 @@
                 'egrep "INFO]\s(.*)V2TransferObjectTask:createObject" '  +
                 '/var/log/dataone/synchronize/cn-synchronization.log'
       }));
-      for ( var cn in environments[env]['cns']) {
-        var id = env + "~" + cn + "~log-sync";
+      for ( cn in environments[env]['cns']) {
+        id = env + "~" + cn + "~log-sync";
         tr.append($("<td>", {
           id : id,
           text : '.',
-          class : 'data'
+          'class' : 'data'
         }));
       }
       tb.append(tr);      
@@ -432,12 +450,12 @@
                 'egrep "INFO](.*):entryUpdated\" ' +
                 '/var/log/dataone/index/cn-index-generator-daemon.log'
       }));
-      for ( var cn in environments[env]['cns']) {
-        var id = env + "~" + cn + "~log-indexgenerator";
+      for ( cn in environments[env]['cns']) {
+        id = env + "~" + cn + "~log-indexgenerator";
         tr.append($("<td>", {
           id : id,
           text : '.',
-          class : 'data'
+          'class' : 'data'
         }));
       }
       tb.append(tr);      
@@ -450,51 +468,66 @@
                 'egrep "INFO](.*)Indexing complete for pid:\" ' +
                 '/var/log/dataone/index/cn-index-processor-daemon.log'
       }));
-      for ( var cn in environments[env]['cns']) {
-        var id = env + "~" + cn + "~log-indexprocessor";
+      for ( cn in environments[env]['cns']) {
+        id = env + "~" + cn + "~log-indexprocessor";
         tr.append($("<td>", {
           id : id,
           text : '.',
-          class : 'data'
+          'class' : 'data'
         }));
       }
       tb.append(tr);      
 
+      //Index processor task queue
+      tr = $("<tr>");
+      tr.append($("<td>", {
+        text : "Index Processor Tasks",
+        title: "Number of indexing tasks in different states"
+      }));
+      for ( cn in environments[env]['cns']) {
+        id = env + "~" + cn + "~indextasks";
+        tr.append($("<td>", {
+          id : id,
+          text : '.',
+          'class' : 'data'
+        }));
+      }
+      tb.append(tr);
       
       //Various services
       for ( var svc in services) {
         tr = $("<tr>");
         tr.append($("<td>", {
           text : services[svc]['name']
-        }))
-        for ( var cn in environments[env]['cns']) {
+        }));
+        for ( cn in environments[env]['cns']) {
           var v = ".";
-          var id = env + "~" + cn + "~" + services[svc]['id'];
+          id = env + "~" + cn + "~" + services[svc]['id'];
           service_history[id] = {'cpu':[], 'mem':[]};
           var td = $("<td>", {
             id : id,
-            class : 'data'
+            'class' : 'data'
           });
           td.append($("<span>", {id: id+"~etime", text: '.'}));
-          td.append($("<span>", {id: id+"~cpu", text: '', class:'data'}));
-          td.append($("<span>", {id: id+"~mem", text: '', class:'data'}));
+          td.append($("<span>", {id: id+"~cpu", text: '', 'class':'data'}));
+          td.append($("<span>", {id: id+"~mem", text: '', 'class':'data'}));
           tr.append(td);
         }
         tb.append(tr);
       }
       
       // Certificates used by the CNs
-      for (var idx in certificates) {
+      for (idx in certificates) {
         tr = $("<tr>");
         tr.append($("<td>", {
           text : certificates[idx]['title']
         }));
-        for ( var cn in environments[env]['cns']) {
-          var id = env + "~" + cn + "~" + certificates[idx]['id'];
+        for ( cn in environments[env]['cns']) {
+          id = env + "~" + cn + "~" + certificates[idx]['id'];
           tr.append($("<td>", {
             id : id,
             text : '.',
-            class : 'data'
+            'class' : 'data'
           }));
         }
         tb.append(tr)        
@@ -502,8 +535,8 @@
       
       od.append(tb);
       // Create a log report place
-      var id = env + '~log';
-      var logger = $("<div>").append( $("<pre>", {id:id, class:'logger', text:''}));
+      id = env + '~log';
+      var logger = $("<div>").append( $("<pre>", {id:id, 'class':'logger', text:''}));
       od.append(logger);
       t.append(od);
     }
@@ -939,7 +972,11 @@
     //services running across the environment are as expected.
     
     //Check that status data for the environment is complete
-    for ( var cn in environments[env]['cns']) {
+    var cn;
+    var idx;
+    var v;
+    var id;
+    for ( cn in environments[env]['cns']) {
       if (environments[env]['cns'][cn]['state'] < STATE_OK) {
         return;
       }
@@ -952,9 +989,9 @@
     }
     //eLog(env, "----", -1);
     //Output the status data to the view
-    for ( var cn in environments[env]['cns']) {
-      var v = "-";
-      var id = env + "~" + cn + "~ipaddr";
+    for ( cn in environments[env]['cns']) {
+      v = "-";
+      id = env + "~" + cn + "~ipaddr";
       try {
         v = environments[env]['cns'][cn]['stats']['ip_address'];
         $('[id="' + id + '"]').html(v);
@@ -962,9 +999,9 @@
         console.log("Error getting stuff for " + cn);
       }
     }
-    for ( var cn in environments[env]['cns']) {
-      var v = "-";
-      var id = env + "~" + cn + "~timestamp";
+    for (cn in environments[env]['cns']) {
+      v = "-";
+      id = env + "~" + cn + "~timestamp";
       try {
         v = environments[env]['cns'][cn]['stats']['time_stamp'].split('.')[0];
         $('[id="' + id + '"]').html(v);
@@ -972,9 +1009,9 @@
         console.log("Error getting stuff for " + cn);
       }
     }
-    for ( var cn in environments[env]['cns']) {
-      var v = "-";
-      var id = env + "~" + cn + "~ping";
+    for (cn in environments[env]['cns']) {
+      v = "-";
+      id = env + "~" + cn + "~ping";
       try {
         v = environments[env]['cns'][cn]['stats']['ping'];
         $('[id="' + id + '"]').html(v);
@@ -982,9 +1019,9 @@
         console.log("Error getting stuff for " + cn);
       }
     }
-    for ( var cn in environments[env]['cns']) {
-      var v = "-";
-      var id = env + "~" + cn + "~close_wait";
+    for (cn in environments[env]['cns']) {
+      v = "-";
+      id = env + "~" + cn + "~close_wait";
       try {
         v = environments[env]['cns'][cn]['stats']['close_waits'];
         $('[id="' + id + '"]').html(v);
@@ -992,9 +1029,9 @@
         console.log("Error getting stuff for " + cn);
       }
     }
-    for ( var cn in environments[env]['cns']) {
-      var v = "-";
-      var id = env + "~" + cn + "~established";
+    for ( cn in environments[env]['cns']) {
+      v = "-";
+      id = env + "~" + cn + "~established";
       try {
         v = environments[env]['cns'][cn]['stats']['established'];
         $('[id="' + id + '"]').html(v);
@@ -1003,9 +1040,9 @@
       }
     }
     //Log timestamps
-    for ( var cn in environments[env]['cns']) {
-      var v = "-";
-      var id = env + "~" + cn + "~log-sync";
+    for ( cn in environments[env]['cns']) {
+      v = "-";
+      id = env + "~" + cn + "~log-sync";
       try {
         v = environments[env]['cns'][cn]['stats']['logs']['synchronization'];
         $('[id="' + id + '"]').html(v);
@@ -1013,9 +1050,9 @@
         console.log("Error getting stuff for " + cn);
       }
     }
-    for ( var cn in environments[env]['cns']) {
-      var v = "-";
-      var id = env + "~" + cn + "~log-indexgenerator";
+    for (cn in environments[env]['cns']) {
+      v = "-";
+      id = env + "~" + cn + "~log-indexgenerator";
       try {
         v = environments[env]['cns'][cn]['stats']['logs']['indexgenerator'];
         $('[id="' + id + '"]').html(v);
@@ -1023,9 +1060,9 @@
         console.log("Error getting stuff for " + cn);
       }
     }
-    for ( var cn in environments[env]['cns']) {
-      var v = "-";
-      var id = env + "~" + cn + "~log-indexprocessor";
+    for ( cn in environments[env]['cns']) {
+      v = "-";
+      id = env + "~" + cn + "~log-indexprocessor";
       try {
         v = environments[env]['cns'][cn]['stats']['logs']['indexprocessor'];
         $('[id="' + id + '"]').html(v);
@@ -1034,10 +1071,10 @@
       }
     }
     
-    for ( var idx in processing) {
-      for ( var cn in environments[env]['cns']) {
-        var id = env + "~" + cn + "~" + processing[idx]['id'];
-        var v = "N/A";
+    for ( idx in processing) {
+      for ( cn in environments[env]['cns']) {
+        id = env + "~" + cn + "~" + processing[idx]['id'];
+        v = "N/A";
         try {
           v = environments[env]['cns'][cn]['stats']['processing'][processing[idx]['id']];
           if (v == true) {
@@ -1052,11 +1089,29 @@
       }
     }
 
+    for ( idx in indexing ) {
+      for (cn in environments[env]['cns']) {
+        id = env + "~" + cn + "~indextasks";
+        v = "";
+        try {
+          var entries = environments[env]['cns'][cn]['stats']['indexing']['queue']
+          v = "<pre>";
+          'NEW' in entries ? v += "NEW: " + entries['NEW'] + "\n" : void 0;
+          'IN PROCESS' in entries ? v += "IN PROCESS: " + entries['IN PROCESS'] + "\n" : void 0;
+          'FAILED' in entries ? v += "FAILED: " + entries['FAILED'] + "\n" : void 0;
+          v += "</pre>";
+          $('[id="' + id + '"]').html(v);
+        }  catch (err) {
+          console.log("Error getting stuff for " + cn);
+        }
+      }
+    }
+
     for ( var svc in services) {
-      for ( var cn in environments[env]['cns']) {
-        var v = "off";
+      for (cn in environments[env]['cns']) {
+        v = "off";
         var title = "Service not running.";
-        var id = env + "~" + cn + "~" + services[svc]['id'];
+        id = env + "~" + cn + "~" + services[svc]['id'];
         var data = environments[env]['cns'][cn]['stats']['services'][services[svc]['id']];
         if (data.length > 0) {
           service_history[id]['cpu'].push(data[0][2]);
@@ -1076,10 +1131,10 @@
       }
     }
 
-    for ( var idx in certificates) {
-      for ( var cn in environments[env]['cns']) {
-        var id = env + "~" + cn + "~" + certificates[idx]['id'];
-        var v = "";
+    for ( idx in certificates) {
+      for ( cn in environments[env]['cns']) {
+        id = env + "~" + cn + "~" + certificates[idx]['id'];
+        v = "";
         try {
           v = environments[env]['cns'][cn]['stats']['certificates'][certificates[idx]['name']];
           $('[id="' + id + '"]').text(v['not_after']).prop('title', v['file']);;
@@ -1094,12 +1149,12 @@
     // going on
     var overall = [0,0,0]; // OK, WARN, ERROR
     if (environments[env]['primary_ip'] != '') {
-      var id = env+"~primary_ip";
+      id = env+"~primary_ip";
       $('[id="' + id + '"]').text(environments[env]['primary_ip']);
       overall = checkReportingTime(env, overall);
       overall = checkPing(env, overall);
-      for ( var cn in environments[env]['cns']) {
-        var id = env + '~col~' + cn;
+      for ( cn in environments[env]['cns']) {
+        id = env + '~col~' + cn;
         var is_primary = false;
         if (environments[env]['cns'][cn]['stats']['ip_address'] == environments[env]['primary_ip']) {
           $('[id="' + id + '"]').addClass('is_primary');
@@ -1118,7 +1173,7 @@
       overall = checkCertificates(env, overall);
     }
     
-    var id = "summary_" + env;
+    id = "summary_" + env;
     if (overall[2] > 0) {
       setIdStatus(id, STATUS_ERROR); 
     } else if (overall[1] > 0) {
