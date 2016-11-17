@@ -83,7 +83,17 @@ def checkCertificates(props):
   res['server_fqdn'] = checkCertificate(server_cert)
   client_cert = os.path.join(props['D1Client.certificate.directory'], props['D1Client.certificate.filename'])
   res['client'] = checkCertificate(client_cert)
-  res['postgres'] = checkCertificate('/var/lib/postgresql/9.1/main/server.crt')
+  postgres_cert_paths = ['/var/lib/postgresql/9.1/main/server.crt',
+                         '/var/lib/postgresql/9.3/main/server.crt',
+                         '/var/lib/postgresql/9.3/server.crt']
+  for pgpath in postgres_cert_paths:
+    try:
+      res['postgres'] = checkCertificate('/var/lib/postgresql/9.1/main/server.crt')
+    except IOError as e:
+      res['postgres'] = {'file': 'NOT FOUND',
+                         'expired':True,
+                         'not_before':'00000000000000Z',
+                         'not_after':'00000000000000Z' }
   return res
 
 
@@ -214,16 +224,34 @@ def getConnections():
 
 def getHazelcastMembership(port=5701):
   url = "http://localhost:%d/hazelcast/rest/cluster" % port
-  res = urllib2.urlopen(url, timeout=2)
-  body = res.read().split("\n")
   data = {'cluster':port,
           'members':[]}
+  try:
+    res = urllib2.urlopen(url, timeout=2)
+  except (socket.timeout, urllib2.URLError) as e:
+    return data
+  body = res.read().split("\n")
   for line in body:
-    line = line.strip()
-    if line.startswith('Member'):
-      words = line.split(' ')
-      data['members'].append(words[2])
+    nmatch = re.search('Member\s*\[(.*)\]', line)
+    if not nmatch is None:
+      data['members'].append(nmatch.group(1))
   return data
+
+
+def getIndexQueueStats():
+  res = {}
+  PSQL = "/usr/bin/psql -h localhost -U dataone_readonly d1-index-queue -A -F , -X -t"
+  SQL = "COPY (SELECT status,COUNT(*) AS cnt FROM index_task GROUP BY status ORDER BY status) TO STDOUT WITH CSV;"
+  cmd = PSQL + " -c \"" + SQL + "\""
+  outp = commands.getstatusoutput(cmd)
+  try:
+    tmp = outp[1].split("\n")
+    for row in tmp:
+      rowd = row.split(",")
+      res[rowd[0]] = int(rowd[1])
+  except Exception as e:
+    logging.error(e)
+  return res
 
 
 def getCNStatus():
@@ -267,6 +295,10 @@ def getCNStatus():
   res['logs']['synchronization'] = checkSyncLogActivity()
   res['logs']['indexgenerator'] = checkIndexGeneratorActivity()
   res['logs']['indexprocessor'] = checkIndexProcessorActivity()
+  res['hazelcast'] = []
+  for port in [5701, 5702, 5703]:
+    res['hazelcast'].append(getHazelcastMembership(port))
+  res['indexing'] = {'queue': getIndexQueueStats()}
   return res
 
 
