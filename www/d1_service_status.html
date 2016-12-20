@@ -611,7 +611,11 @@
     var res = {'n': 0};
     var v = false;
     for ( var cn in environments[env]['cns'] ) {
-      v = environments[env]['cns'][cn]['stats']['processing'][process];
+      try {
+        v = environments[env]['cns'][cn]['stats']['processing'][process];
+      } catch (err) {
+        v = false;
+      }
       res[cn] = v;
       if ( v ) {
         res['n'] += 1;
@@ -622,7 +626,12 @@
   
 
   function isServiceRunningCN(env, service, cn) {
-    return environments[env]['cns'][cn]['stats']['services'][service].length
+    try {
+      return environments[env]['cns'][cn]['stats']['services'][service].length
+    } catch (err) {
+      console.log("Error checking service " + service + " on CN " + cn);
+    }
+    return 0;
   }
   
   
@@ -1108,21 +1117,25 @@
         v = "off";
         var title = "Service not running.";
         id = env + "~" + cn + "~" + services[svc]['id'];
-        var data = environments[env]['cns'][cn]['stats']['services'][services[svc]['id']];
-        if (data.length > 0) {
-          service_history[id]['cpu'].push(data[0][2]);
-          if (service_history[id]['cpu'].length > MAX_HISTORY) {
-            service_history[id]['cpu'].shift();
+        try {
+          var data = environments[env]['cns'][cn]['stats']['services'][services[svc]['id']];
+          if (data.length > 0) {
+            service_history[id]['cpu'].push(data[0][2]);
+            if (service_history[id]['cpu'].length > MAX_HISTORY) {
+              service_history[id]['cpu'].shift();
+            }
+            service_history[id]['mem'].push(data[0][3]);
+            if (service_history[id]['mem'].length > MAX_HISTORY) {
+              service_history[id]['mem'].shift();
+            }
+            $('[id="' + id + '~etime"]').text(data[0][1]).prop('title', 'Elapsed time');
+            $('[id="' + id + '~cpu"]').text(data[0][2]).prop('title', '%CPU');
+            $('[id="' + id + '~mem"]').text(data[0][3]).prop('title', '%MEM');
+          } else {
+            $('[id="' + id + '~etime"]').text("Off").prop('title', 'Service not running');
           }
-          service_history[id]['mem'].push(data[0][3]);
-          if (service_history[id]['mem'].length > MAX_HISTORY) {
-            service_history[id]['mem'].shift();
-          }
-          $('[id="' + id + '~etime"]').text(data[0][1]).prop('title', 'Elapsed time');
-          $('[id="' + id + '~cpu"]').text(data[0][2]).prop('title', '%CPU');
-          $('[id="' + id + '~mem"]').text(data[0][3]).prop('title', '%MEM');
-        } else {
-          $('[id="' + id + '~etime"]').text("Off").prop('title', 'Service not running');
+        } catch (err) {
+          console.log("Error getting service " + svc + " stuff for " + cn);
         }
       }
     }
@@ -1200,8 +1213,8 @@
       error : function(jqXHR, textStatus, errorThrown) {
         console.log("Unable to retrieve status for " + this.cn + "("
             + jqXHR.status + ")");
-        environments[environment]['cns'][this.cn]['stats'] = {};
-        environments[environment]['cns'][this.cn]['state'] = STATE_ERROR;
+        environments[environment]['cns'][cn]['stats'] = {};
+        environments[environment]['cns'][cn]['state'] = STATE_ERROR;
         environments[environment]['cns'][cn]['ts_retrieved'] = new Date();
         eLog(environment,'Failed to retrieve status update from '+ cn, STATUS_ERROR);
         renderEnvironmentStatus(environment);
