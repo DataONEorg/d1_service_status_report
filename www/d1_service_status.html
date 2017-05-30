@@ -272,7 +272,26 @@
       }
     });
   }
-  
+
+
+  function compareTimeStamps(t0, t1) {
+    var msg = '';
+    var delta = Math.abs(t1-t0);
+    if ( delta > MAX_TIME_DELTA ) {
+      delta = delta / (1000 * 60.0);
+      if (delta > 120) {
+        delta = delta / 60;
+        msg = Math.round(delta) + " hours";
+        if (delta > 48) {
+          msg = Math.round(delta / 24) + " days";
+        }
+      } else {
+        msg = Math.round(delta) + " minutes";
+      }
+    }
+    return msg;
+  }
+
   
   function generateStatusView(target) {
     //Creates the DOM structure that will be used to hold results as they are 
@@ -676,23 +695,12 @@
     var id = env + "~" + cn + "~log-sync";
     var t0 = Date.parse(environments[env]['cns'][cn]['stats']['logs']['synchronization']);
     var t1 = environments[env]['cns'][cn]['ts_retrieved'];
-    var delta = Math.abs(t1-t0);
-    if ( delta > MAX_TIME_SYNCLOG ) {
-      delta = delta / (1000 * 60.0);
-      var msg = '';
-      if (delta > 120) {
-        delta = delta / 60;
-        msg = Math.round(delta) + " hours";
-        if (delta > 48) {
-          msg = Math.round(delta/24) + " days";
-        }
-      } else {
-        msg = Math.round(delta) + " minutes";
-      }
+    var msg = compareTimeStamps(t0, t1);
+    if (msg == "") {
+      setIdStatus(id, STATUS_OK);
+    } else {
       setIdStatus(id, STATUS_ERROR);
       eLog(env, "No new messages in sync log for " + msg);
-    } else {
-      setIdStatus(id, STATUS_OK);
     }
   }
   
@@ -701,23 +709,12 @@
     var id = env + "~" + cn + "~log-indexgenerator";
     var t0 = Date.parse(environments[env]['cns'][cn]['stats']['logs']['indexgenerator']);
     var t1 = environments[env]['cns'][cn]['ts_retrieved'];
-    var delta = Math.abs(t1-t0);
-    if ( delta > MAX_TIME_INDEX_GEN_LOG ) {
-      delta = delta / (1000 * 60.0);
-      var msg = '';
-      if (delta > 120) {
-        delta = delta / 60;
-        msg = Math.round(delta) + " hours";
-        if (delta > 48) {
-          msg = Math.round(delta/24) + " days";
-        }
-      } else {
-        msg = Math.round(delta) + " minutes";
-      }
+    var msg = compareTimeStamps(t0, t1);
+    if (msg == "") {
+      setIdStatus(id, STATUS_OK);
+    } else {
       setIdStatus(id, STATUS_ERROR);
       eLog(env, "No new messages in index generator log for " + msg);
-    } else {
-      setIdStatus(id, STATUS_OK);
     }
   }
   
@@ -726,23 +723,12 @@
     var id = env + "~" + cn + "~log-indexprocessor";
     var t0 = Date.parse(environments[env]['cns'][cn]['stats']['logs']['indexprocessor']);
     var t1 = environments[env]['cns'][cn]['ts_retrieved'];
-    var delta = Math.abs(t1-t0);
-    if ( delta > MAX_TIME_INDEX_PROC_LOG ) {
-      delta = delta / (1000 * 60.0);
-      var msg = '';
-      if (delta > 120) {
-        delta = delta / 60;
-        msg = Math.round(delta) + " hours";
-        if (delta > 48) {
-          msg = Math.round(delta/24) + " days";
-        }
-      } else {
-        msg = Math.round(delta) + " minutes";
-      }
+    var msg = compareTimeStamps(t0, t1);
+    if (msg == "") {
+      setIdStatus(id, STATUS_OK);
+    } else {
       setIdStatus(id, STATUS_ERROR);
       eLog(env, "No new messages in index processor log for " + msg);
-    } else {
-      setIdStatus(id, STATUS_OK);
     }
   }
   
@@ -905,26 +891,15 @@
     for ( var cn in environments[env]['cns']) {
       var t0 = Date.parse(environments[env]['cns'][cn]['stats']['time_stamp']);
       var t1 = environments[env]['cns'][cn]['ts_retrieved'];
-      var delta = Math.abs(t1-t0);
+      var msg = compareTimeStamps(t0, t1);
       var id = env + "~" + cn + "~timestamp";
-      if ( delta > MAX_TIME_DELTA ) {
-        delta = delta / (1000 * 60.0);
-        var msg = '';
-        if (delta > 120) {
-          delta = delta / 60;
-          msg = Math.round(delta) + " hours";
-          if (delta > 48) {
-            msg = Math.round(delta/24) + " days";
-          }
-        } else {
-          msg = Math.round(delta) + " minutes";
-        }
+      if (msg == "") {
+        setIdStatus(id, STATUS_OK);
+        overall[0] += 1;
+      } else {
         setIdStatus(id, STATUS_ERROR);
         eLog(env, "No report from CN for " + msg);
         overall[2] += 1;
-      } else {
-        setIdStatus(id, STATUS_OK);
-        overall[0] += 1;
       }
     }
     return overall;
@@ -1152,8 +1127,7 @@
         }
       }
     }
-    
-    
+
     // Now compute if the service states are OK or if something unexepected is
     // going on
     var overall = [0,0,0]; // OK, WARN, ERROR
@@ -1194,6 +1168,7 @@
     renderLog(env);
     environments[env]['rendered'] = true;
   }
+
 
   function getCNStatusJSON(environment, cn) {
     //Load the service status for the cn
