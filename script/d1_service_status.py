@@ -78,7 +78,12 @@ def checkCertificate(cert_file):
 
 def checkCertificates(props):
   res = {}
-  res['wildcard'] = checkCertificate(props['cn.server.publiccert.filename'])
+  le_fn = os.path.join("/etc/letsencrypt/live", props['cn.router.hostname'], "cert.pem")
+  if os.path.exists( le_fn ):
+    res['wildcard'] = checkCertificate( le_fn )
+  else:
+    res['wildcard'] = checkCertificate( props['cn.server.publiccert.filename'] )
+
   server_cert = os.path.join('/etc/dataone/client/certs', props['cn.hostname']+".pem")
   res['server_fqdn'] = checkCertificate(server_cert)
   client_cert = os.path.join(props['D1Client.certificate.directory'], props['D1Client.certificate.filename'])
@@ -113,7 +118,7 @@ def checkSyncLogActivity():
     if match is not None:
       tstr = match.group(0)
       dt = datetime.datetime.strptime(tstr, "%Y-%m-%d %H:%M:%S")
-      return dt.isoformat()
+      return dt.isoformat() + "Z"
   return ''
 
 
@@ -128,7 +133,7 @@ def checkIndexGeneratorActivity():
     if match is not None:
       tstr = match.group(0)
       dt = datetime.datetime.strptime(tstr, "%Y-%m-%d %H:%M:%S")
-      return dt.isoformat()
+      return dt.isoformat() + "Z"
   return ''
     
 
@@ -143,7 +148,7 @@ def checkIndexProcessorActivity():
     if match is not None:
       tstr = match.group(0)
       dt = datetime.datetime.strptime(tstr, "%Y-%m-%d %H:%M:%S")
-      return dt.isoformat()
+      return dt.isoformat() + "Z"
   return ''
 
 
@@ -273,7 +278,7 @@ def getCNStatus():
   fqdn = getFQDN()
   
   # Results are added to this structure, which is finally output as JSON
-  res = {'time_stamp': datetime.datetime.utcnow().isoformat(),
+  res = {'time_stamp': datetime.datetime.utcnow().isoformat() + 'Z',
          'fqdn': fqdn,
           }
   res['ping'] = pingSelf(fqdn)
@@ -298,7 +303,7 @@ def getCNStatus():
   res['hazelcast'] = []
   for port in [5701, 5702, 5703]:
     res['hazelcast'].append(getHazelcastMembership(port))
-  res['indexing'] = {'queue': getIndexQueueStats()}
+  #res['indexing'] = {'queue': getIndexQueueStats()}
   return res
 
 
