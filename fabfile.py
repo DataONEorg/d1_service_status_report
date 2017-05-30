@@ -47,7 +47,7 @@ def deployToCN():
   #cron.d file must be owned by root and writable only by root.
   put(os.path.join('script/', CROND_FILE), "/etc/cron.d/", use_sudo=True, mode=0644)
   sudo( "chown root:root /etc/cron.d/" + CROND_FILE)
-  run("/usr/local/bin/d1_service_status -")
+  sudo("/usr/local/bin/d1_service_status -")
   
   
 def updateWebSite():
