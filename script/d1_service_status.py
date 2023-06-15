@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 '''Script to output a chunk of JSON showing CN state.
 
 This should be run as a cron job on CNs, every 5 min or so.
