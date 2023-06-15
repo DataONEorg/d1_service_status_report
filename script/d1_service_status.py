@@ -19,8 +19,8 @@ import socket
 import re
 import datetime
 import json
-import commands
-import urllib2
+import subprocess
+import urllib.request, urllib.error, urllib.parse
 import time
 import ssl
 from OpenSSL import crypto
@@ -32,15 +32,15 @@ def pingSelf(address):
   '''Call /v2/monitor/ping and record the result.
   '''
   url = "https://{0}/cn/v2/monitor/ping".format(address)
-  t0 = time.clock()
+  t0 = time.perf_counter()
   try:
-    res = urllib2.urlopen(url, timeout=5)
-  except urllib2.HTTPError as e:
+    res = urllib.request.urlopen(url, timeout=5)
+  except urllib.error.HTTPError as e:
     return "FAIL : %s" % str(e)
   except ssl.SSLError as e:
     return "FAIL : %s" % str(e)
 
-  t1 = time.clock()
+  t1 = time.perf_counter()
   delta = t1 - t0
   try:
     return "%s (%.3f sec)" % (res.headers['date'], delta)
@@ -68,11 +68,11 @@ def loadNodeProperties(prop_file='/etc/dataone/node.properties'):
 
 def checkCertificate(cert_file):
   res = {'file':cert_file}
-  with file(cert_file, "rb") as cfile:
+  with open(cert_file, "rb") as cfile:
     x509 = crypto.load_certificate(crypto.FILETYPE_PEM, cfile.read())
   res['expired'] = x509.has_expired()
-  res['not_before'] = x509.get_notBefore()
-  res['not_after'] = x509.get_notAfter()
+  res['not_before'] = x509.get_notBefore().decode()
+  res['not_after'] = x509.get_notAfter().decode()
   return res
 
 
@@ -112,7 +112,7 @@ def checkSyncLogActivity():
   '''
   #cmd = "egrep \"INFO]\s(.*)V2TransferObjectTask:createObject\" /var/log/dataone/synchronize/cn-synchronization.log | tail -n1"
   cmd = "egrep \"INFO]\s(.*)\s\" /var/log/dataone/synchronize/cn-synchronization.log | tail -n1"
-  outp = commands.getstatusoutput(cmd)
+  outp = subprocess.getstatusoutput(cmd)
   if outp[0] == 0:
     match = date_match.search(outp[1])
     if match is not None:
@@ -127,7 +127,7 @@ def checkIndexGeneratorActivity():
   '''
   cmd = "egrep \"INFO](.*):entryUpdated\" /var/log/dataone/index/cn-index-generator-daemon.log | tail -n1"
   logging.debug('checkIndexGeneratorActivity: ' + cmd)
-  outp = commands.getstatusoutput(cmd)
+  outp = subprocess.getstatusoutput(cmd)
   if outp[0] == 0:
     match = date_match.search(outp[1])
     if match is not None:
@@ -135,14 +135,14 @@ def checkIndexGeneratorActivity():
       dt = datetime.datetime.strptime(tstr, "%Y-%m-%d %H:%M:%S")
       return dt.isoformat() + "Z"
   return ''
-    
+
 
 def checkIndexProcessorActivity():
   '''
   Indexing complete for pid
   '''
   cmd = "egrep \"INFO](.*)Indexing complete for pid:\" /var/log/dataone/index/cn-index-processor-daemon.log | tail -n1"
-  outp = commands.getstatusoutput(cmd)
+  outp = subprocess.getstatusoutput(cmd)
   if outp[0] == 0:
     match = date_match.search(outp[1])
     if match is not None:
@@ -153,8 +153,8 @@ def checkIndexProcessorActivity():
 
 
 def getFQDN():
-  res = commands.getstatusoutput("hostname -f")
-  return res[1]
+  res = subprocess.getstatusoutput("hostname -f")
+  return str(res[1])
 
 
 def getCPUNow(pid):
@@ -162,7 +162,7 @@ def getCPUNow(pid):
   Using top, which is a more instant measure than ps which is load for the 
   entire duration of the process.
   '''
-  outp = commands.getstatusoutput("top -p " + pid + " -n1 | awk '/ " + pid + " /{print $10}'")
+  outp = subprocess.getstatusoutput("top -p " + pid + " -n1 | awk '/ " + pid + " /{print $10}'")
   return outp[1].strip();
 
 
@@ -170,7 +170,7 @@ def getProcesses():
   '''Return list of [pid, args] for all processes on system
   '''
   res = []
-  outp = commands.getstatusoutput("ps ax -o pid,etime,pcpu,pmem,args")
+  outp = subprocess.getstatusoutput("ps ax -o pid,etime,pcpu,pmem,args")
   tmp = outp[1].split("\n")
   for row in tmp:
     pid = row[0:5].strip()
@@ -192,7 +192,7 @@ def getServicePids(processes, match):
       #data[2] = getCPUNow(data[0])
       pids.append(data)
   return pids
-  
+
 
 def getProcessingEnablement():
   '''examine processing properties files and see what's going on
@@ -202,22 +202,22 @@ def getProcessingEnablement():
                 'logAggregation.properties': 'LogAggregator.active' }
   base_path = "/etc/dataone/process/"
   res = {}
-  for prop in to_examine.keys():
+  for prop in list(to_examine.keys()):
     res[to_examine[prop]] = False
-    outp = commands.getstatusoutput("grep {0} {1}".format(to_examine[prop], os.path.join(base_path, prop)))
+    outp = subprocess.getstatusoutput("grep {0} {1}".format(to_examine[prop], os.path.join(base_path, prop)))
     outp = outp[1][ outp[1].find("=")+1: ]
     outp = outp.strip().lower()
     if outp == "true":
       res[to_examine[prop]] = True
   return res
-  
-  
+
+
 def getConnections():
   '''Return the current number of connections in CLOSE_WAIT, ESTABLISHED
   '''
   n_cw = 0
   n_es = 0
-  outp = commands.getstatusoutput("lsof -i")
+  outp = subprocess.getstatusoutput("lsof -i")
   tmp = outp[1].split("\n")
   for row in tmp:
     if re.search("CLOSE_WAIT", row):
@@ -232,10 +232,10 @@ def getHazelcastMembership(port=5701):
   data = {'cluster':port,
           'members':[]}
   try:
-    res = urllib2.urlopen(url, timeout=2)
-  except (socket.timeout, urllib2.URLError) as e:
+    res = urllib.request.urlopen(url, timeout=2)
+  except (socket.timeout, urllib.error.URLError) as e:
     return data
-  body = res.read().split("\n")
+  body = res.read().decode().split("\n")
   for line in body:
     nmatch = re.search('Member\s*\[(.*)\]', line)
     if not nmatch is None:
@@ -248,7 +248,7 @@ def getIndexQueueStats():
   PSQL = "/usr/bin/psql -h localhost -U dataone_readonly d1-index-queue -A -F , -X -t"
   SQL = "COPY (SELECT status,COUNT(*) AS cnt FROM index_task GROUP BY status ORDER BY status) TO STDOUT WITH CSV;"
   cmd = PSQL + " -c \"" + SQL + "\""
-  outp = commands.getstatusoutput(cmd)
+  outp = subprocess.getstatusoutput(cmd)
   try:
     tmp = outp[1].split("\n")
     for row in tmp:
@@ -287,7 +287,7 @@ def getCNStatus():
   res['service_entries'] = ['PID','eTime','pCPU','pMEM']
   res['services'] = {}
   processes = getProcesses()
-  for name in services.keys():
+  for name in list(services.keys()):
     res['services'][name] = getServicePids(processes, services[name])
   res['processing'] = getProcessingEnablement()
   res['certificates'] = checkCertificates(properties)
@@ -314,7 +314,7 @@ if __name__ == "__main__":
     dest = sys.argv[1]
   status_report = getCNStatus()
   if dest == "-":
-    print(json.dumps(status_report, indent=2))
+    print((json.dumps(status_report, indent=2)))
     exit(0)
   with open(dest,"w") as fout:
     json.dump(status_report, fout, indent=2)
